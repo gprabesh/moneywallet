@@ -1,21 +1,52 @@
-# Add project specific ProGuard rules here.
-# You can control the set of applied configuration files using the
-# proguardFiles setting in buildMaterialDialog.gradle.
-#
-# For more details, see
-#   http://developer.android.com/guide/developing/tools/proguard.html
+# MPAndroidChart
+-keep class com.github.mikephil.charting.** { *; }
+-dontwarn com.github.mikephil.charting.**
 
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
+# Glide
+-keep public class * extends com.github.bumptech.glide.module.AppGlideModule
+-keep public class * extends com.github.bumptech.glide.module.LibraryGlideModule
+-keep class com.github.bumptech.glide.GeneratedAppGlideModuleImpl { *; }
+-keep public enum com.github.bumptech.glide.load.ImageHeaderParser$** {
+  **[] $VALUES;
+  public *;
+}
 
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
+# AndroidX WorkManager
+-keep class androidx.work.Worker { *; }
+-keep class androidx.work.impl.WorkerWrapper { *; }
 
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
+# Project specific: Keep models and database entities
+-keep class com.oriondev.moneywallet.model.** { *; }
+-keep class com.oriondev.moneywallet.storage.database.Contract$** { *; }
+
+# Keep workers
+-keep class com.oriondev.moneywallet.worker.** { *; }
+
+# MaterialDrawer
+-keep class com.mikepenz.materialdrawer.** { *; }
+
+# Zip4j
+-keep class net.lingala.zip4j.** { *; }
+
+# itextpdf
+-keep class com.itextpdf.** { *; }
+-dontwarn com.itextpdf.**
+
+# Bouncy Castle (optional dependency for itextpdf)
+-dontwarn org.bouncycastle.**
+
+# OSMDroid
+-keep class org.osmdroid.** { *; }
+-dontwarn org.osmdroid.**
+
+# Material Dialogs
+-dontwarn com.afollestad.materialdialogs.**
+
+# Apache Commons
+-dontwarn org.apache.commons.**
+
+# Keep common annotation pattern
+-keepattributes *Annotation*
+-keepattributes Signature
+-keepattributes InnerClasses
+-keepattributes EnclosingMethod

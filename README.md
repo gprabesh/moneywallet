@@ -39,15 +39,30 @@ This project is completely free, I decided to completely remove the in-app purch
 - LTC: LZW1AUMWN4BdUvSu8fujEYVLgqWH2HsLZs
 
 ## Build
-This updated version targets Android 14 (API 34) and has been stripped of proprietary or missing Google integrations for an entirely FLOSS, side-loadable build.
+This updated version targets Android 14 (API 34) and has been stripped of proprietary or missing Google integrations for an entirely FLOSS (Free/Libre Open Source) build.
 
 1. Ensure the Android SDK is configured correctly in `local.properties` (e.g. `sdk.dir=/home/user/Android/sdk`).
 2. Make sure you are using a modern JDK such as **Java 17** or **Java 21**. 
-3. Run the Gradle build:
+3. **(Optional) Generate a Release Keystore**:
+   To build a production APK, you need a signing keystore. You can generate a temporary one with:
+   ```bash
+   keytool -genkey -v -keystore app/release.keystore -alias moneywallet -keyalg RSA -keysize 2048 -validity 10000 -storepass moneywallet -keypass moneywallet -dname "CN=MoneyWallet, OU=OSS, O=OSS, L=Unknown, S=Unknown, C=Unknown"
+   ```
+   *Note: The current `app/build.gradle` is configured to look for `app/release.keystore` with the password `moneywallet` by default.*
 
-```bash
-JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 ./gradlew assembleDebug
-```
+4. **Run the Gradle build**:
+
+   **For Debug (Development):**
+   ```bash
+   JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 ./gradlew assembleDebug
+   ```
+
+   **For Release (Production - Optimized):**
+   ```bash
+   JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 ./gradlew assembleRelease
+   ```
+
+The resulting APKs will be located in `app/build/outputs/apk/debug/` or `app/build/outputs/apk/release/`.
 
 ## FAQ
 1. why does the precompiled binary contain a huge icon pack while there are only a few icons in the source code?

@@ -96,6 +96,7 @@
         <activity android:name=".ui.activity.LockActivity" />
         <activity android:name=".ui.activity.DonationActivity" />
         <activity android:name=".ui.activity.ImportExportActivity" />
+        <activity android:name=".ui.activity.PlacePickerActivity" />
 
         <provider
             android:name=".storage.database.DataContentProvider"

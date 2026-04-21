@@ -43,10 +43,22 @@ android {
         multiDexEnabled true
         buildConfigField('String', 'API_KEY_OPEN_EXCHANGE_RATES', ApiKey_OpenExchangeRates)
     }
+
+    signingConfigs {
+        release {
+            storeFile file('release.keystore')
+            storePassword 'moneywallet'
+            keyAlias 'moneywallet'
+            keyPassword 'moneywallet'
+        }
+    }
+
     buildTypes {
         release {
-            minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            minifyEnabled true
+            shrinkResources true
+            signingConfig signingConfigs.release
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
         debug {
             applicationIdSuffix ".dev"
@@ -55,8 +67,6 @@ android {
     }
     sourceSets {
         main {
-            java.srcDirs += ['src/floss/java', 'src/osm/java']
-            res.srcDirs += ['src/floss/res', 'src/osm/res']
         }
     }
 

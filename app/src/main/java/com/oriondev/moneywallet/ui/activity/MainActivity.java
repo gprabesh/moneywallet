@@ -63,7 +63,7 @@ import com.oriondev.moneywallet.broadcast.LocalAction;
 import com.oriondev.moneywallet.model.ColorIcon;
 import com.oriondev.moneywallet.model.Money;
 import com.oriondev.moneywallet.model.WalletAccount;
-import com.oriondev.moneywallet.service.BackupHandlerIntentService;
+import com.oriondev.moneywallet.worker.BackupWorker;
 import com.oriondev.moneywallet.storage.database.Contract;
 import com.oriondev.moneywallet.storage.database.DataContentProvider;
 import com.oriondev.moneywallet.storage.preference.PreferenceManager;
@@ -654,8 +654,8 @@ public class MainActivity extends BaseActivity implements DrawerController, Acco
         @Override
         public void onReceive(Context context, Intent intent) {
             if (intent != null) {
-                int action = intent.getIntExtra(BackupHandlerIntentService.ACTION, 0);
-                if (action == BackupHandlerIntentService.ACTION_RESTORE) {
+                int action = intent.getIntExtra(BackupWorker.ACTION, 0);
+                if (action == BackupWorker.ACTION_RESTORE) {
                     getSupportLoaderManager().restartLoader(LOADER_WALLETS, null, MainActivity.this);
                 }
             }

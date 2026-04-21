@@ -1,17 +1,24 @@
-package com.oriondev.moneywallet.service;
+package com.oriondev.moneywallet.worker;
 
-import android.app.IntentService;
+import android.app.Notification;
 import android.content.ContentResolver;
+import android.content.Context;
 import android.content.Intent;
+import android.content.pm.ServiceInfo;
 import android.database.Cursor;
 import android.net.Uri;
-import android.os.Parcelable;
+import android.os.Build;
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.core.content.FileProvider;
+import androidx.core.app.NotificationCompat;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
+import androidx.work.Data;
+import androidx.work.ForegroundInfo;
+import androidx.work.Worker;
+import androidx.work.WorkerParameters;
 
+import com.oriondev.moneywallet.R;
 import com.oriondev.moneywallet.broadcast.LocalAction;
+import com.oriondev.moneywallet.model.CurrencyUnit;
 import com.oriondev.moneywallet.model.DataFormat;
 import com.oriondev.moneywallet.model.Wallet;
 import com.oriondev.moneywallet.storage.database.Contract;
@@ -22,71 +29,83 @@ import com.oriondev.moneywallet.storage.database.data.csv.CSVDataExporter;
 import com.oriondev.moneywallet.storage.database.data.csv.CSVDataImporter;
 import com.oriondev.moneywallet.storage.database.data.pdf.PDFDataExporter;
 import com.oriondev.moneywallet.storage.database.data.xls.XLSDataExporter;
+import com.oriondev.moneywallet.ui.notification.NotificationContract;
+import com.oriondev.moneywallet.utils.CurrencyManager;
 import com.oriondev.moneywallet.utils.DateUtils;
+import com.oriondev.moneywallet.utils.IconLoader;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
-/**
- * Created by andrea on 20/12/18.
- */
-public class ImportExportIntentService extends IntentService {
+public class ImportExportWorker extends Worker {
 
-    public static final String MODE = "ImportExportIntentService::Arguments::Mode";
-    public static final String FORMAT = "ImportExportIntentService::Arguments::Format";
-    public static final String START_DATE = "ImportExportIntentService::Arguments::StartDate";
-    public static final String END_DATE = "ImportExportIntentService::Arguments::EndDate";
-    public static final String WALLETS = "ImportExportIntentService::Arguments::Wallets";
-    public static final String FOLDER_URI = "ImportExportIntentService::Arguments::FolderUri";
-    public static final String FILE_URI = "ImportExportIntentService::Arguments::FileUri";
-    public static final String UNIQUE_WALLET = "ImportExportIntentService::Arguments::UniqueWallet";
-    public static final String OPTIONAL_COLUMNS = "ImportExportIntentService::Arguments::OptionalColumns";
+    public static final String MODE = "ImportExportWorker::Arguments::Mode";
+    public static final String FORMAT = "ImportExportWorker::Arguments::Format";
+    public static final String START_DATE = "ImportExportWorker::Arguments::StartDate";
+    public static final String END_DATE = "ImportExportWorker::Arguments::EndDate";
+    public static final String WALLET_IDS = "ImportExportWorker::Arguments::Wallets";
+    public static final String FOLDER_URI = "ImportExportWorker::Arguments::FolderUri";
+    public static final String FILE_URI = "ImportExportWorker::Arguments::FileUri";
+    public static final String UNIQUE_WALLET = "ImportExportWorker::Arguments::UniqueWallet";
+    public static final String OPTIONAL_COLUMNS = "ImportExportWorker::Arguments::OptionalColumns";
 
-    public static final String RESULT_FILE_URI = "ImportExportIntentService::Results::FileUri";
-    public static final String RESULT_FILE_TYPE = "ImportExportIntentService::Results::FileType";
-    public static final String EXCEPTION = "ImportExportIntentService::Results::Exception";
+    public static final String RESULT_FILE_URI = "ImportExportWorker::Results::FileUri";
+    public static final String RESULT_FILE_TYPE = "ImportExportWorker::Results::FileType";
+    public static final String EXCEPTION = "ImportExportWorker::Results::Exception";
 
     public static final int MODE_EXPORT = 0;
     public static final int MODE_IMPORT = 1;
 
     private LocalBroadcastManager mBroadcastManager;
 
-    public ImportExportIntentService() {
-        super("ImportExportIntentService");
+    public ImportExportWorker(@NonNull Context context, @NonNull WorkerParameters workerParams) {
+        super(context, workerParams);
     }
 
+    @NonNull
     @Override
-    protected void onHandleIntent(@Nullable Intent intent) {
-        if (intent != null) {
-            mBroadcastManager = LocalBroadcastManager.getInstance(this);
-            int mode = intent.getIntExtra(MODE, MODE_EXPORT);
-            switch (mode) {
-                case MODE_EXPORT:
-                    handleExport(intent);
-                    break;
-                case MODE_IMPORT:
-                    handleImport(intent);
-                    break;
-            }
+    public Result doWork() {
+        mBroadcastManager = LocalBroadcastManager.getInstance(getApplicationContext());
+        Data inputData = getInputData();
+        int mode = inputData.getInt(MODE, MODE_EXPORT);
+
+        switch (mode) {
+            case MODE_EXPORT:
+                setForegroundAsync(createForegroundInfo(R.string.title_data_exporting));
+                handleExport(inputData);
+                break;
+            case MODE_IMPORT:
+                setForegroundAsync(createForegroundInfo(R.string.title_data_importing));
+                handleImport(inputData);
+                break;
+        }
+        return Result.success();
+    }
+
+    private ForegroundInfo createForegroundInfo(int titleRes) {
+        Notification notification = new NotificationCompat.Builder(getApplicationContext(), NotificationContract.NOTIFICATION_CHANNEL_BACKUP)
+                .setSmallIcon(R.drawable.ic_notification)
+                .setContentTitle(getApplicationContext().getString(titleRes))
+                .setPriority(NotificationCompat.PRIORITY_LOW)
+                .setOngoing(true)
+                .build();
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            return new ForegroundInfo(NotificationContract.NOTIFICATION_ID_BACKUP_PROGRESS, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC);
+        } else {
+            return new ForegroundInfo(NotificationContract.NOTIFICATION_ID_BACKUP_PROGRESS, notification);
         }
     }
 
-    private void handleImport(@NonNull Intent intent) {
+    private void handleImport(Data inputData) {
         notifyTaskStarted(LocalAction.ACTION_IMPORT_SERVICE_STARTED);
         try {
-            // extract parameters from the intent
-            DataFormat dataFormat = (DataFormat) intent.getSerializableExtra(FORMAT);
-            Uri fileUri = intent.getParcelableExtra(FILE_URI);
-            if (dataFormat == null) {
-                throw new IllegalArgumentException("parameter is null [FORMAT]");
-            }
-            if (fileUri == null) {
-                throw new IllegalArgumentException("parameter is null [FILE_URI]");
-            }
-            // initialize the correct data importer
+            String formatName = inputData.getString(FORMAT);
+            DataFormat dataFormat = DataFormat.valueOf(formatName);
+            Uri fileUri = Uri.parse(inputData.getString(FILE_URI));
+
             AbstractDataImporter dataImporter = getDataImporter(dataFormat, fileUri);
             try {
                 dataImporter.importData();
@@ -99,49 +118,43 @@ public class ImportExportIntentService extends IntentService {
         }
     }
 
-    private void handleExport(@NonNull Intent intent) {
+    private void handleExport(Data inputData) {
         notifyTaskStarted(LocalAction.ACTION_EXPORT_SERVICE_STARTED);
         try {
-            // extract parameters from the intent
-            DataFormat dataFormat = (DataFormat) intent.getSerializableExtra(FORMAT);
-            Date startDate = (Date) intent.getSerializableExtra(START_DATE);
-            Date endDate = (Date) intent.getSerializableExtra(END_DATE);
-            Wallet[] wallets = getWalletList(intent, WALLETS);
-            Uri folderUri = intent.getParcelableExtra(FOLDER_URI);
-            boolean uniqueWallet = intent.getBooleanExtra(UNIQUE_WALLET, false);
-            String[] optionalColumns = intent.getStringArrayExtra(OPTIONAL_COLUMNS);
-            // check necessary parameters
-            if (dataFormat == null) {
-                throw new IllegalArgumentException("parameter is null [FORMAT]");
-            }
+            String formatName = inputData.getString(FORMAT);
+            DataFormat dataFormat = DataFormat.valueOf(formatName);
+            long startDateTime = inputData.getLong(START_DATE, -1);
+            Date startDate = startDateTime == -1 ? null : new Date(startDateTime);
+            long endDateTime = inputData.getLong(END_DATE, -1);
+            Date endDate = endDateTime == -1 ? null : new Date(endDateTime);
+            long[] walletIds = inputData.getLongArray(WALLET_IDS);
+            Wallet[] wallets = fetchWallets(walletIds);
+            Uri folderUri = Uri.parse(inputData.getString(FOLDER_URI));
+            boolean uniqueWallet = inputData.getBoolean(UNIQUE_WALLET, false);
+            String[] optionalColumns = inputData.getStringArray(OPTIONAL_COLUMNS);
+
             if (wallets == null || wallets.length == 0) {
                 throw new IllegalArgumentException("parameter is null or empty [WALLETS]");
             }
-            if (folderUri == null) {
-                throw new IllegalArgumentException("parameter is null [FOLDER_URI]");
-            }
-            // initialize the correct data exporter
+
             AbstractDataExporter dataExporter = getDataExporter(dataFormat, folderUri);
-            ContentResolver contentResolver = getContentResolver();
+            ContentResolver contentResolver = getApplicationContext().getContentResolver();
             Uri uri = DataContentProvider.CONTENT_TRANSACTIONS;
-            // initialize the selection builder with common variables
+
             StringBuilder selectionBuilder = new StringBuilder();
             List<String> selectionArguments = new ArrayList<>();
-            // append rule to limit to the end date or to the current date
             selectionBuilder.append("DATE (" + Contract.Transaction.DATE + ") <= DATE(?)");
             selectionArguments.add(DateUtils.getSQLDateString(getFixedEndDate(endDate)));
-            // if provided, apply a rule to the start date
+
             if (startDate != null) {
                 selectionBuilder.append(" AND DATE (" + Contract.Transaction.DATE + ") >= DATE(?)");
                 selectionArguments.add(DateUtils.getSQLDateString(startDate));
             }
+
             String sortOrder = Contract.Transaction.DATE + " DESC";
-            // check if we should create a unique wallet or if we can export each wallet
-            // in a separate way
             boolean multiWallet = wallets.length > 1 && dataExporter.isMultiWalletSupported() && !uniqueWallet;
             String[] columns = dataExporter.getColumns(!multiWallet, optionalColumns);
-            // before starting with the export logic, check if the exporter should
-            // store the people names into his internal cache to speedup the procedure
+
             if (dataExporter.shouldLoadPeople()) {
                 Cursor cursor = contentResolver.query(DataContentProvider.CONTENT_PEOPLE, null, null, null, null);
                 if (cursor != null) {
@@ -149,10 +162,8 @@ public class ImportExportIntentService extends IntentService {
                     cursor.close();
                 }
             }
-            // handle the export logic differently
+
             if (multiWallet) {
-                // execute a query for each wallet: we should clone the original builder
-                // to avoid mistakes during each successive query
                 for (Wallet wallet : wallets) {
                     String selection = selectionBuilder + " AND " + Contract.Transaction.WALLET_ID + " = ?";
                     String[] arguments = selectionArguments.toArray(new String[selectionArguments.size() + 1]);
@@ -164,7 +175,6 @@ public class ImportExportIntentService extends IntentService {
                     }
                 }
             } else {
-                // execute only a large query: we can modify the original builder here
                 selectionBuilder.append(" AND (");
                 for (int i = 0; i < wallets.length; i++) {
                     if (i != 0) {
@@ -180,13 +190,10 @@ public class ImportExportIntentService extends IntentService {
                     cursor.close();
                 }
             }
-            // close the exporter to flush and close all the open streams
+
             dataExporter.close();
-            // if no exception has been thrown so far, we can ask the exporter
-            // for the output file: we can pass the uri of this file inside the intent
             Uri resultUri = dataExporter.getOutputFile();
             String resultType = dataExporter.getResultType();
-            // send a successful intent to inform the receivers that the operation succeed
             notifyTaskFinished(LocalAction.ACTION_EXPORT_SERVICE_FINISHED, resultUri, resultType);
         } catch (Exception e) {
             e.printStackTrace();
@@ -194,13 +201,47 @@ public class ImportExportIntentService extends IntentService {
         }
     }
 
-    private Wallet[] getWalletList(Intent intent, String key) {
-        Parcelable[] parcelableArray = intent.getParcelableArrayExtra(key);
-        Wallet[] wallets = new Wallet[parcelableArray.length];
-        for (int i = 0; i < parcelableArray.length; i++) {
-            wallets[i] = (Wallet) parcelableArray[i];
+    private Wallet[] fetchWallets(long[] walletIds) {
+        if (walletIds == null || walletIds.length == 0) return new Wallet[0];
+        List<Wallet> wallets = new ArrayList<>();
+        ContentResolver contentResolver = getApplicationContext().getContentResolver();
+        
+        StringBuilder selection = new StringBuilder(Contract.Wallet.ID + " IN (");
+        for (int i = 0; i < walletIds.length; i++) {
+            if (i != 0) selection.append(",");
+            selection.append(walletIds[i]);
         }
-        return wallets;
+        selection.append(")");
+
+        Cursor cursor = contentResolver.query(
+                DataContentProvider.CONTENT_WALLETS,
+                null,
+                selection.toString(),
+                null,
+                null
+        );
+
+        if (cursor != null) {
+            int mIndexId = cursor.getColumnIndex(Contract.Wallet.ID);
+            int mIndexName = cursor.getColumnIndex(Contract.Wallet.NAME);
+            int mIndexIcon = cursor.getColumnIndex(Contract.Wallet.ICON);
+            int mIndexCurrency = cursor.getColumnIndex(Contract.Wallet.CURRENCY);
+            int mIndexStartMoney = cursor.getColumnIndex(Contract.Wallet.START_MONEY);
+            int mIndexTotalMoney = cursor.getColumnIndex(Contract.Wallet.TOTAL_MONEY);
+
+            while (cursor.moveToNext()) {
+                wallets.add(new Wallet(
+                        cursor.getLong(mIndexId),
+                        cursor.getString(mIndexName),
+                        IconLoader.parse(cursor.getString(mIndexIcon)),
+                        CurrencyManager.getCurrency(cursor.getString(mIndexCurrency)),
+                        cursor.getLong(mIndexStartMoney),
+                        cursor.getLong(mIndexTotalMoney)
+                ));
+            }
+            cursor.close();
+        }
+        return wallets.toArray(new Wallet[0]);
     }
 
     private void notifyTaskStarted(String action) {
@@ -229,7 +270,7 @@ public class ImportExportIntentService extends IntentService {
     private AbstractDataImporter getDataImporter(DataFormat dataFormat, Uri fileUri) throws IOException {
         switch (dataFormat) {
             case CSV:
-                return new CSVDataImporter(this, fileUri);
+                return new CSVDataImporter(getApplicationContext(), fileUri);
             default:
                 throw new RuntimeException("DataFormat not supported");
         }
@@ -238,11 +279,11 @@ public class ImportExportIntentService extends IntentService {
     private AbstractDataExporter getDataExporter(DataFormat dataFormat, Uri folderUri) throws IOException {
         switch (dataFormat) {
             case CSV:
-                return new CSVDataExporter(this, folderUri);
+                return new CSVDataExporter(getApplicationContext(), folderUri);
             case XLS:
-                return new XLSDataExporter(this, folderUri);
+                return new XLSDataExporter(getApplicationContext(), folderUri);
             case PDF:
-                return new PDFDataExporter(this, folderUri);
+                return new PDFDataExporter(getApplicationContext(), folderUri);
             default:
                 throw new RuntimeException("DataFormat not supported");
         }

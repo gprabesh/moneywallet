@@ -30,9 +30,15 @@ import java.util.Locale;
 public abstract class AbstractDataImporter {
 
     private final Context mContext;
+    private final Uri mFileUri;
 
-    public AbstractDataImporter(Context context, File file) throws IOException {
+    public AbstractDataImporter(Context context, Uri fileUri) throws IOException {
         mContext = context;
+        mFileUri = fileUri;
+    }
+
+    protected Uri getFileUri() {
+        return mFileUri;
     }
 
     protected Context getContext() {

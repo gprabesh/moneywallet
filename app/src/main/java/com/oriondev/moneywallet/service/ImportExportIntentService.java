@@ -40,8 +40,8 @@ public class ImportExportIntentService extends IntentService {
     public static final String START_DATE = "ImportExportIntentService::Arguments::StartDate";
     public static final String END_DATE = "ImportExportIntentService::Arguments::EndDate";
     public static final String WALLETS = "ImportExportIntentService::Arguments::Wallets";
-    public static final String FOLDER = "ImportExportIntentService::Arguments::Folder";
-    public static final String FILE = "ImportExportIntentService::Arguments::File";
+    public static final String FOLDER_URI = "ImportExportIntentService::Arguments::FolderUri";
+    public static final String FILE_URI = "ImportExportIntentService::Arguments::FileUri";
     public static final String UNIQUE_WALLET = "ImportExportIntentService::Arguments::UniqueWallet";
     public static final String OPTIONAL_COLUMNS = "ImportExportIntentService::Arguments::OptionalColumns";
 
@@ -79,15 +79,15 @@ public class ImportExportIntentService extends IntentService {
         try {
             // extract parameters from the intent
             DataFormat dataFormat = (DataFormat) intent.getSerializableExtra(FORMAT);
-            File file = (File) intent.getSerializableExtra(FILE);
+            Uri fileUri = intent.getParcelableExtra(FILE_URI);
             if (dataFormat == null) {
                 throw new IllegalArgumentException("parameter is null [FORMAT]");
             }
-            if (file == null || !file.exists()) {
-                throw new IllegalArgumentException("parameter is null or not a file [FILE]");
+            if (fileUri == null) {
+                throw new IllegalArgumentException("parameter is null [FILE_URI]");
             }
             // initialize the correct data importer
-            AbstractDataImporter dataImporter = getDataImporter(dataFormat, file);
+            AbstractDataImporter dataImporter = getDataImporter(dataFormat, fileUri);
             try {
                 dataImporter.importData();
             } finally {
@@ -107,7 +107,7 @@ public class ImportExportIntentService extends IntentService {
             Date startDate = (Date) intent.getSerializableExtra(START_DATE);
             Date endDate = (Date) intent.getSerializableExtra(END_DATE);
             Wallet[] wallets = getWalletList(intent, WALLETS);
-            File folder = (File) intent.getSerializableExtra(FOLDER);
+            Uri folderUri = intent.getParcelableExtra(FOLDER_URI);
             boolean uniqueWallet = intent.getBooleanExtra(UNIQUE_WALLET, false);
             String[] optionalColumns = intent.getStringArrayExtra(OPTIONAL_COLUMNS);
             // check necessary parameters
@@ -117,11 +117,11 @@ public class ImportExportIntentService extends IntentService {
             if (wallets == null || wallets.length == 0) {
                 throw new IllegalArgumentException("parameter is null or empty [WALLETS]");
             }
-            if (folder == null || !folder.isDirectory()) {
-                throw new IllegalArgumentException("parameter is null or not a directory [FOLDER]");
+            if (folderUri == null) {
+                throw new IllegalArgumentException("parameter is null [FOLDER_URI]");
             }
             // initialize the correct data exporter
-            AbstractDataExporter dataExporter = getDataExporter(dataFormat, folder);
+            AbstractDataExporter dataExporter = getDataExporter(dataFormat, folderUri);
             ContentResolver contentResolver = getContentResolver();
             Uri uri = DataContentProvider.CONTENT_TRANSACTIONS;
             // initialize the selection builder with common variables
@@ -184,10 +184,7 @@ public class ImportExportIntentService extends IntentService {
             dataExporter.close();
             // if no exception has been thrown so far, we can ask the exporter
             // for the output file: we can pass the uri of this file inside the intent
-            // Uri resultUri = Uri.fromFile(dataExporter.getOutputFile());
-            String authority = getPackageName() + ".storage.file";
-            File outputFile = dataExporter.getOutputFile();
-            Uri resultUri = FileProvider.getUriForFile(this, authority, outputFile);
+            Uri resultUri = dataExporter.getOutputFile();
             String resultType = dataExporter.getResultType();
             // send a successful intent to inform the receivers that the operation succeed
             notifyTaskFinished(LocalAction.ACTION_EXPORT_SERVICE_FINISHED, resultUri, resultType);
@@ -229,23 +226,23 @@ public class ImportExportIntentService extends IntentService {
         mBroadcastManager.sendBroadcast(intent);
     }
 
-    private AbstractDataImporter getDataImporter(DataFormat dataFormat, File file) throws IOException {
+    private AbstractDataImporter getDataImporter(DataFormat dataFormat, Uri fileUri) throws IOException {
         switch (dataFormat) {
             case CSV:
-                return new CSVDataImporter(this, file);
+                return new CSVDataImporter(this, fileUri);
             default:
                 throw new RuntimeException("DataFormat not supported");
         }
     }
 
-    private AbstractDataExporter getDataExporter(DataFormat dataFormat, File folder) throws IOException {
+    private AbstractDataExporter getDataExporter(DataFormat dataFormat, Uri folderUri) throws IOException {
         switch (dataFormat) {
             case CSV:
-                return new CSVDataExporter(this, folder);
+                return new CSVDataExporter(this, folderUri);
             case XLS:
-                return new XLSDataExporter(this, folder);
+                return new XLSDataExporter(this, folderUri);
             case PDF:
-                return new PDFDataExporter(this, folder);
+                return new PDFDataExporter(this, folderUri);
             default:
                 throw new RuntimeException("DataFormat not supported");
         }

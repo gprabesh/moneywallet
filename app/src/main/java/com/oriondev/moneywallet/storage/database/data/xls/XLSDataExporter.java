@@ -12,8 +12,10 @@ import com.oriondev.moneywallet.storage.database.data.AbstractDataExporter;
 import com.oriondev.moneywallet.utils.CurrencyManager;
 import com.oriondev.moneywallet.utils.MoneyFormatter;
 
-import java.io.File;
+import android.net.Uri;
+import androidx.documentfile.provider.DocumentFile;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -31,16 +33,25 @@ import jxl.write.WriteException;
  */
 public class XLSDataExporter extends AbstractDataExporter {
 
-    private final File mOutputFile;
+    private final Uri mOutputUri;
     private final WritableWorkbook mWorkbook;
     private final MoneyFormatter mMoneyFormatter;
 
     private boolean mShouldLoadPeople = false;
 
-    public XLSDataExporter(Context context, File folder) throws IOException {
-        super(context, folder);
-        mOutputFile = new File(folder, getDefaultFileName(".xls"));
-        mWorkbook = Workbook.createWorkbook(mOutputFile);
+    public XLSDataExporter(Context context, Uri folderUri) throws IOException {
+        super(context, folderUri);
+        DocumentFile folder = DocumentFile.fromTreeUri(context, folderUri);
+        if (folder == null) {
+            throw new IOException("Failed to open folder URI: " + folderUri);
+        }
+        DocumentFile file = folder.createFile("application/vnd.ms-excel", getDefaultFileName(".xls"));
+        if (file == null) {
+            throw new IOException("Failed to create file in folder: " + folder.getName());
+        }
+        mOutputUri = file.getUri();
+        OutputStream outputStream = context.getContentResolver().openOutputStream(mOutputUri);
+        mWorkbook = Workbook.createWorkbook(outputStream);
         mMoneyFormatter = MoneyFormatter.getInstance();
     }
 
@@ -232,8 +243,8 @@ public class XLSDataExporter extends AbstractDataExporter {
     }
 
     @Override
-    public File getOutputFile() {
-        return mOutputFile;
+    public Uri getOutputFile() {
+        return mOutputUri;
     }
 
     @Override

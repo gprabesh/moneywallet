@@ -10,9 +10,9 @@ import com.oriondev.moneywallet.storage.database.data.AbstractDataImporter;
 import com.oriondev.moneywallet.utils.CurrencyManager;
 import com.oriondev.moneywallet.utils.DateUtils;
 
-import java.io.File;
-import java.io.FileReader;
+import android.net.Uri;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.math.BigDecimal;
 import java.util.Date;
 import java.util.Map;
@@ -24,9 +24,9 @@ public class CSVDataImporter extends AbstractDataImporter {
 
     private final CSVReaderHeaderAware mReader;
 
-    public CSVDataImporter(Context context, File file) throws IOException {
-        super(context, file);
-        mReader = new CSVReaderHeaderAware(new FileReader(file));
+    public CSVDataImporter(Context context, Uri fileUri) throws IOException {
+        super(context, fileUri);
+        mReader = new CSVReaderHeaderAware(new InputStreamReader(context.getContentResolver().openInputStream(fileUri)));
     }
 
     @Override

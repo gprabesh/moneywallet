@@ -20,21 +20,27 @@
 apply plugin: 'com.android.application'
 
 android {
-    compileSdkVersion 29
+    namespace "com.oriondev.moneywallet"
+    compileSdkVersion 34
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    buildFeatures {
+        buildConfig = true
+    }
+
     defaultConfig {
         applicationId "com.oriondev.moneywallet"
         minSdkVersion 21
-        targetSdkVersion 29
+        targetSdkVersion 34
         versionCode 75
         versionName "4.0.5.10"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         testInstrumentationRunnerArguments clearPackageData: 'true'
         multiDexEnabled true
-        manifestPlaceholders = [
-                DropBoxApiKey: ApiKey_Dropbox.replaceAll('"', ''),
-                GoogleApiKey : ApiKey_Google
-        ]
-        buildConfigField('String', 'API_KEY_DROPBOX', ApiKey_Dropbox)
         buildConfigField('String', 'API_KEY_OPEN_EXCHANGE_RATES', ApiKey_OpenExchangeRates)
     }
     buildTypes {
@@ -47,23 +53,13 @@ android {
             debuggable true
         }
     }
-    flavorDimensions "version", "map"
-    productFlavors {
-        // version
-        proprietary {
-            dimension "version"
-        }
-        floss {
-            dimension "version"
-        }
-        // map
-        gmap {
-            dimension "map"
-        }
-        osm {
-            dimension "map"
+    sourceSets {
+        main {
+            java.srcDirs += ['src/floss/java', 'src/osm/java']
+            res.srcDirs += ['src/floss/res', 'src/osm/res']
         }
     }
+
     // test libraries
     useLibrary 'android.test.runner'
     useLibrary 'android.test.base'
@@ -87,7 +83,7 @@ dependencies {
     implementation supportDependencies.preference
     implementation 'com.afollestad.material-dialogs:core:0.9.6.0'
     implementation 'com.afollestad.material-dialogs:commons:0.9.6.0'
-    implementation('com.mikepenz:materialdrawer:6.0.8@aar') {
+    implementation('com.mikepenz:materialdrawer:6.1.2@aar') {
         transitive = true
     }
     implementation 'com.pnikosis:materialish-progress:1.7'
@@ -117,15 +113,8 @@ dependencies {
     implementation 'me.weishu:free_reflection:2.2.0'
     implementation 'com.github.bumptech.glide:glide:4.8.0'
     annotationProcessor 'com.github.bumptech.glide:compiler:4.8.0'
-    // google play dependencies
-    proprietaryImplementation('com.dropbox.core:dropbox-core-sdk:3.0.8')
-    proprietaryImplementation googlePlayServices.auth
-    proprietaryImplementation googlePlayServices.signin
-    proprietaryImplementation googlePlayServices.drive
-    // google-map dependencies
-    gmapImplementation googlePlayServices.places
-    // floss dependencies
-    osmImplementation 'org.osmdroid:osmdroid-android:6.1.1'
+    // osm map dependency
+    implementation 'org.osmdroid:osmdroid-android:6.1.1'
     // test dependencies (local tests)
     testImplementation 'junit:junit:4.12'
     testImplementation 'org.mockito:mockito-core:3.6.28'

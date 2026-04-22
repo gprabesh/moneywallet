@@ -1,0 +1,74 @@
+name: Android CI
+
+on:
+  push:
+    branches: [ "master" ]
+    tags:
+      - 'v*'
+  release:
+    types: [published]
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+  build:
+    name: Build APK
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: set up JDK 21
+      uses: actions/setup-java@v4
+      with:
+        java-version: '21'
+        distribution: 'temurin'
+        cache: gradle
+
+    - name: Grant execute permission for gradlew
+      run: chmod +x gradlew
+
+    # Decode the Keystore from Secrets
+    - name: Decode Keystore
+      if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'release'
+      run: |
+        echo "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" | base64 --decode > app/release.keystore
+
+    # Build Debug APK (On every push to master)
+    - name: Build Debug APK
+      run: |
+        ./gradlew assembleDebug
+        mv app/build/outputs/apk/debug/app-debug.apk app/build/outputs/apk/debug/MoneyWallet-debug.apk
+
+    # Build Release APK (Only on tags or UI releases)
+    - name: Build Release APK
+      if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'release'
+      run: |
+        ./gradlew assembleRelease
+        mv app/build/outputs/apk/release/app-release.apk app/build/outputs/apk/release/MoneyWallet.apk
+      env:
+        # These are used if the user updates build.gradle to use environment variables,
+        # but for now, we rely on the hardcoded passwords in build.gradle matching
+        # the decoded keystore's passwords.
+        RELEASE_STORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
+        RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+        RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+
+    # Upload Debug APK as Artifact
+    - name: Upload Debug APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: MoneyWallet-debug
+        path: app/build/outputs/apk/debug/MoneyWallet-debug.apk
+
+    # Create/Update Release and Upload Release APK
+    - name: Create Release
+      if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'release'
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          app/build/outputs/apk/release/MoneyWallet.apk
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

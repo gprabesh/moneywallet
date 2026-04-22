@@ -22,6 +22,8 @@ package com.oriondev.moneywallet.service;
 import android.app.Activity;
 import android.app.IntentService;
 import android.content.Intent;
+import android.content.pm.ServiceInfo;
+import android.os.Build;
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
@@ -67,7 +69,11 @@ public abstract class AbstractCurrencyRateDownloadIntentService extends IntentSe
                 .setContentTitle(getString(R.string.notification_title_download_exchange_rates))
                 .setProgress(0, 0, true)
                 .setCategory(NotificationCompat.CATEGORY_PROGRESS);
-        startForeground(NotificationContract.NOTIFICATION_ID_EXCHANGE_RATE_PROGRESS, mBuilder.build());
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            startForeground(NotificationContract.NOTIFICATION_ID_EXCHANGE_RATE_PROGRESS, mBuilder.build(), ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC);
+        } else {
+            startForeground(NotificationContract.NOTIFICATION_ID_EXCHANGE_RATE_PROGRESS, mBuilder.build());
+        }
         Exception exception = null;
         try {
             updateExchangeRates();
@@ -97,7 +103,11 @@ public abstract class AbstractCurrencyRateDownloadIntentService extends IntentSe
     protected void setCurrentProgress(String operation, int percentage) {
         mBuilder.setContentText(operation)
                 .setProgress(100, percentage, false);
-        startForeground(NotificationContract.NOTIFICATION_ID_EXCHANGE_RATE_PROGRESS, mBuilder.build());
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            startForeground(NotificationContract.NOTIFICATION_ID_EXCHANGE_RATE_PROGRESS, mBuilder.build(), ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC);
+        } else {
+            startForeground(NotificationContract.NOTIFICATION_ID_EXCHANGE_RATE_PROGRESS, mBuilder.build());
+        }
     }
 
     private void showError(String error) {

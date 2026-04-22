@@ -14,6 +14,8 @@ import com.oriondev.moneywallet.ui.view.theme.ThemedDialog;
 
 import androidx.activity.ComponentActivity;
 import androidx.activity.result.ActivityResultCallback;
+import androidx.activity.result.ActivityResultCaller;
+import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts.OpenDocumentTree;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -22,6 +24,8 @@ import androidx.annotation.Nullable;
  * Backend service used to access files over the android storage access framework.
  */
 public class SAFBackendService extends AbstractBackendServiceDelegate {
+
+    private ActivityResultLauncher<Uri> mLauncher;
 
     /**
      * Flag containing both {@link Intent#FLAG_GRANT_READ_URI_PERMISSION} and
@@ -81,24 +85,32 @@ public class SAFBackendService extends AbstractBackendServiceDelegate {
     }
 
     @Override
-    public void setup(final ComponentActivity activity) {
-        activity.registerForActivityResult(
-            new DocumentTreeContract(),
-            new ActivityResultCallback<Uri>() {
-                @Override
-                public void onActivityResult(Uri uri) {
-                    boolean enabled = false;
-                    if (uri != null) {
-                        activity.getContentResolver().takePersistableUriPermission(
-                                uri,
-                                FLAG_URI_READ_WRITE
-                        );
-                        storeUri(activity, uri);
-                        enabled = true;
+    public void register(@NonNull final ActivityResultCaller caller, @NonNull final Context context) {
+        mLauncher = caller.registerForActivityResult(
+                new DocumentTreeContract(),
+                new ActivityResultCallback<Uri>() {
+                    @Override
+                    public void onActivityResult(Uri uri) {
+                        boolean enabled = false;
+                        if (uri != null) {
+                            context.getContentResolver().takePersistableUriPermission(
+                                    uri,
+                                    FLAG_URI_READ_WRITE
+                            );
+                            storeUri(context, uri);
+                            enabled = true;
+                        }
+                        setBackendServiceEnabled(enabled);
                     }
-                    setBackendServiceEnabled(enabled);
                 }
-            }).launch(null);
+        );
+    }
+
+    @Override
+    public void setup(final ComponentActivity activity) {
+        if (mLauncher != null) {
+            mLauncher.launch(null);
+        }
     }
 
     @Override

@@ -19,6 +19,7 @@
 
 <resources>
     <string name="app_name">MoneyWallet</string>
+    <string name="title_wallets">Wallets</string>
 
     <string name="menu_transaction">"Transactions"</string>
     <string name="menu_category">"Categories"</string>

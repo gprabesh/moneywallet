@@ -37,7 +37,7 @@
         android:label="@string/app_name"
         android:supportsRtl="true"
         android:allowBackup="true"
-        android:theme="@style/MoneyWalletAppTheme"
+        android:theme="@style/Theme.MoneyWallet"
         android:requestLegacyExternalStorage="true"
         android:fullBackupContent="@xml/backup_rules"
         tools:ignore="GoogleAppIndexingWarning">

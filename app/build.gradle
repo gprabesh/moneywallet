@@ -84,18 +84,15 @@ configurations {
 
 dependencies {
     // common dependencies
-    implementation supportDependencies.appcompat
-    implementation supportDependencies.constraintlayout
-    implementation supportDependencies.recyclerview
-    implementation supportDependencies.cardview
-    implementation supportDependencies.annotations
-    implementation supportDependencies.design
-    implementation supportDependencies.preference
+    implementation 'androidx.appcompat:appcompat:1.7.0'
+    api 'com.google.android.material:material:1.12.0'
+    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+    implementation 'androidx.recyclerview:recyclerview:1.3.2'
+    implementation 'androidx.cardview:cardview:1.0.0'
+    implementation 'androidx.annotation:annotation:1.8.0'
+    implementation 'androidx.preference:preference:1.2.1'
     implementation 'com.afollestad.material-dialogs:core:0.9.6.0'
     implementation 'com.afollestad.material-dialogs:commons:0.9.6.0'
-    implementation('com.mikepenz:materialdrawer:6.1.2@aar') {
-        transitive = true
-    }
     implementation 'com.pnikosis:materialish-progress:1.7'
     implementation 'com.github.rubensousa:bottomsheetbuilder:1.6.1'
     implementation('com.philliphsu:bottomsheetpickers:2.4.1') {
@@ -105,8 +102,8 @@ dependencies {
     implementation 'com.github.florent37:expansionpanel:1.1.1'
     implementation 'commons-io:commons-io:2.6'
     implementation 'androidx.multidex:multidex:2.0.1'
-    implementation 'androidx.activity:activity:1.2.0-alpha08'
-    implementation 'androidx.fragment:fragment:1.3.0-alpha08'
+    implementation 'androidx.activity:activity:1.9.0'
+    implementation 'androidx.fragment:fragment:1.8.0'
     implementation 'net.lingala.zip4j:zip4j:1.3.2'
     implementation 'com.github.daniel-stoneuk:material-about-library:2.2.4'
     implementation 'com.github.apl-devs:appintro:v4.2.3'

@@ -23,6 +23,7 @@ import android.content.Context;
 import android.content.Intent;
 
 import androidx.activity.ComponentActivity;
+import androidx.activity.result.ActivityResultCaller;
 import androidx.annotation.NonNull;
 import androidx.annotation.StringRes;
 
@@ -49,6 +50,8 @@ public abstract class AbstractBackendServiceDelegate {
     public abstract int getBackupCoverAction();
 
     public abstract boolean isServiceEnabled(Context context);
+
+    public void register(@NonNull ActivityResultCaller caller, @NonNull Context context) {}
 
     public abstract void setup(ComponentActivity activity) throws BackendException;
 

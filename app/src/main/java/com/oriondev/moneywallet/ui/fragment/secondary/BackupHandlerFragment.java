@@ -126,6 +126,9 @@ public class BackupHandlerFragment extends Fragment implements BackupFileAdapter
         // bind to local broadcast manager to get notified of background operations
         Activity activity = getActivity();
         if (activity != null) {
+            if (mBackendService != null) {
+                mBackendService.register(this, activity);
+            }
             IntentFilter intentFilter = new IntentFilter();
             intentFilter.addAction(LocalAction.ACTION_BACKUP_SERVICE_STARTED);
             intentFilter.addAction(LocalAction.ACTION_BACKUP_SERVICE_FINISHED);

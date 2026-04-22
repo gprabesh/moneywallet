@@ -42,22 +42,22 @@ import androidx.loader.content.CursorLoader;
 import androidx.loader.content.Loader;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.recyclerview.widget.RecyclerView;
-import androidx.appcompat.widget.Toolbar;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.TextView;
+import com.oriondev.moneywallet.utils.CurrencyManager;
+import com.oriondev.moneywallet.utils.MoneyFormatter;
+import com.oriondev.moneywallet.utils.Utils;
 
+import androidx.appcompat.app.ActionBarDrawerToggle;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.Toolbar;
+import androidx.core.view.GravityCompat;
+import androidx.drawerlayout.widget.DrawerLayout;
+import com.google.android.material.navigation.NavigationView;
 import com.afollestad.materialdialogs.MaterialDialog;
-import com.mikepenz.materialdrawer.AccountHeader;
-import com.mikepenz.materialdrawer.AccountHeaderBuilder;
-import com.mikepenz.materialdrawer.Drawer;
-import com.mikepenz.materialdrawer.DrawerBuilder;
-import com.mikepenz.materialdrawer.model.DividerDrawerItem;
-import com.mikepenz.materialdrawer.model.PrimaryDrawerItem;
-import com.mikepenz.materialdrawer.model.ProfileDrawerItem;
-import com.mikepenz.materialdrawer.model.ProfileSettingDrawerItem;
-import com.mikepenz.materialdrawer.model.interfaces.IDrawerItem;
-import com.mikepenz.materialdrawer.model.interfaces.IProfile;
 import com.oriondev.moneywallet.R;
 import com.oriondev.moneywallet.broadcast.LocalAction;
 import com.oriondev.moneywallet.model.ColorIcon;
@@ -89,7 +89,7 @@ import com.oriondev.moneywallet.utils.IconLoader;
 
 import java.util.Locale;
 
-public class MainActivity extends BaseActivity implements DrawerController, AccountHeader.OnAccountHeaderListener, Drawer.OnDrawerItemClickListener, LoaderManager.LoaderCallbacks<Cursor>  {
+public class MainActivity extends BaseActivity implements DrawerController, ToolbarController, NavigationView.OnNavigationItemSelectedListener, LoaderManager.LoaderCallbacks<Cursor>  {
 
     private static final String SAVED_SELECTION = "MainActivity::current_selection";
 
@@ -117,13 +117,15 @@ public class MainActivity extends BaseActivity implements DrawerController, Acco
     private final static int ID_ACTION_NEW_WALLET = 1;
     private final static int ID_ACTION_MANAGE_WALLET = 2;
 
-    private AccountHeader mAccountHeader;
-    private Drawer mDrawer;
+    private DrawerLayout mDrawerLayout;
+    private NavigationView mNavigationView;
+    private ActionBarDrawerToggle mDrawerToggle;
 
     private long mCurrentSelection;
     private Fragment mCurrentFragment;
 
     private Cursor mCursor;
+    private boolean mShowingWallets = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -146,64 +148,129 @@ public class MainActivity extends BaseActivity implements DrawerController, Acco
      * setup the account header and the navigation drawer.
      */
     private void initializeNavigationDrawer() {
-        mAccountHeader = new AccountHeaderBuilder()
-                .withActivity(this)
-                .withHeaderBackground(R.color.colorPrimary)
-                .withOnAccountHeaderListener(this)
-                .build();
-        mDrawer = new DrawerBuilder()
-                .withActivity(this)
-                .withAccountHeader(mAccountHeader)
-                .addDrawerItems(
-                        createDrawerItem(ID_SECTION_TRANSACTIONS, R.drawable.ic_shopping_cart_24dp, R.string.menu_transaction),
-                        createDrawerItem(ID_SECTION_CATEGORIES, R.drawable.ic_table_large_24dp, R.string.menu_category),
-                        createDrawerItem(ID_SECTION_OVERVIEW, R.drawable.ic_equalizer_24dp, R.string.menu_overview),
-                        createDrawerItem(ID_SECTION_DEBTS, R.drawable.ic_debt_24dp, R.string.menu_debt),
-                        createDrawerItem(ID_SECTION_BUDGETS, R.drawable.ic_budget_24dp, R.string.menu_budget),
-                        createDrawerItem(ID_SECTION_SAVINGS, R.drawable.ic_saving_24dp, R.string.menu_saving),
-                        createDrawerItem(ID_SECTION_EVENTS, R.drawable.ic_assistant_photo_24dp, R.string.menu_event),
-                        createDrawerItem(ID_SECTION_RECURRENCES, R.drawable.ic_restore_24dp, R.string.menu_recurrences),
-                        createDrawerItem(ID_SECTION_MODELS, R.drawable.ic_bookmark_black_24dp, R.string.menu_models),
-                        createDrawerItem(ID_SECTION_PLACES, R.drawable.ic_place_24dp, R.string.menu_place),
-                        createDrawerItem(ID_SECTION_PEOPLE, R.drawable.ic_people_black_24dp, R.string.menu_people),
-                        new DividerDrawerItem(),
-                        createDrawerItem(ID_SECTION_CALCULATOR, R.drawable.ic_calculator_24dp, R.string.menu_calculator),
-                        createDrawerItem(ID_SECTION_CONVERTER, R.drawable.ic_converter_24dp,R.string.menu_converter),
-                        createDrawerItem(ID_SECTION_ATM, R.drawable.ic_credit_card_24dp, R.string.menu_search_atm),
-                        createDrawerItem(ID_SECTION_BANK, R.drawable.ic_account_balance_24dp, R.string.menu_search_bank),
-                        new DividerDrawerItem(),
-                        createDrawerItem(ID_SECTION_SETTING, R.drawable.ic_settings_24dp, R.string.menu_setting),
-                        createDrawerItem(ID_SECTION_SUPPORT_DEVELOPER, R.drawable.ic_favorite_border_black_24dp, R.string.menu_support_developer),
-                        createDrawerItem(ID_SECTION_ABOUT, R.drawable.ic_info_outline_24dp, R.string.menu_about)
-                )
-                .withOnDrawerItemClickListener(this)
-                .build();
+        mDrawerLayout = findViewById(R.id.drawer_layout);
+        mNavigationView = findViewById(R.id.navigation_view);
+        mNavigationView.setNavigationItemSelectedListener(this);
+
+        View headerView = mNavigationView.getHeaderView(0);
+        if (headerView != null) {
+            headerView.setOnClickListener(v -> {
+                mShowingWallets = !mShowingWallets;
+                updateMenuVisibility();
+                ImageView toggle = headerView.findViewById(R.id.header_toggle);
+                if (toggle != null) {
+                    toggle.animate().rotation(mShowingWallets ? 180 : 0).setDuration(200).start();
+                }
+            });
+        }
     }
 
-    /**
-     * This method is responsible to create a new PrimaryDrawerItem entry for the navigation drawer.
-     * @param identifier integer id of the item.
-     * @param icon drawable resource of the icon of the item.
-     * @param name string resource of the name of the item.
-     * @return the created drawer item.
-     */
-    private IDrawerItem createDrawerItem(int identifier, @DrawableRes int icon, @StringRes int name) {
-        return new PrimaryDrawerItem()
-                .withIdentifier(identifier)
-                .withIconTintingEnabled(true)
-                .withIcon(icon)
-                .withName(name);
+    private void updateMenuVisibility() {
+        Menu menu = mNavigationView.getMenu();
+        if (menu != null) {
+            menu.setGroupVisible(R.id.id_section_wallets, mShowingWallets);
+            menu.setGroupVisible(R.id.id_section_main, !mShowingWallets);
+
+            MenuItem utils = menu.findItem(R.id.id_section_utilities_parent);
+            if (utils != null) utils.setVisible(!mShowingWallets);
+
+            MenuItem more = menu.findItem(R.id.id_section_more_parent);
+            if (more != null) more.setVisible(!mShowingWallets);
+        }
+    }
+
+    @Override
+    public void setToolbar(Toolbar toolbar) {
+        setSupportActionBar(toolbar);
+
+        mDrawerToggle = new ActionBarDrawerToggle(this, mDrawerLayout, toolbar, R.string.menu_transaction, R.string.menu_transaction);
+        mDrawerLayout.addDrawerListener(mDrawerToggle);
+        mDrawerToggle.syncState();
+    }
+
+    @Override
+    public boolean onNavigationItemSelected(@NonNull MenuItem item) {
+        int id = item.getItemId();
+        long selection = -1;
+
+        if (id == R.id.id_section_transactions) selection = ID_SECTION_TRANSACTIONS;
+        else if (id == R.id.id_section_categories) selection = ID_SECTION_CATEGORIES;
+        else if (id == R.id.id_section_overview) selection = ID_SECTION_OVERVIEW;
+        else if (id == R.id.id_section_debts) selection = ID_SECTION_DEBTS;
+        else if (id == R.id.id_section_budgets) selection = ID_SECTION_BUDGETS;
+        else if (id == R.id.id_section_savings) selection = ID_SECTION_SAVINGS;
+        else if (id == R.id.id_section_events) selection = ID_SECTION_EVENTS;
+        else if (id == R.id.id_section_recurrences) selection = ID_SECTION_RECURRENCES;
+        else if (id == R.id.id_section_models) selection = ID_SECTION_MODELS;
+        else if (id == R.id.id_section_places) selection = ID_SECTION_PLACES;
+        else if (id == R.id.id_section_people) selection = ID_SECTION_PEOPLE;
+        else if (id == R.id.id_section_calculator) selection = ID_SECTION_CALCULATOR;
+        else if (id == R.id.id_section_converter) selection = ID_SECTION_CONVERTER;
+        else if (id == R.id.id_section_atm) selection = ID_SECTION_ATM;
+        else if (id == R.id.id_section_bank) selection = ID_SECTION_BANK;
+        else if (id == R.id.id_section_setting) selection = ID_SECTION_SETTING;
+        else if (id == R.id.id_section_support_developer) selection = ID_SECTION_SUPPORT_DEVELOPER;
+        else if (id == R.id.id_section_about) selection = ID_SECTION_ABOUT;
+
+        if (selection != -1) {
+            handleSelection(selection);
+            mDrawerLayout.closeDrawer(GravityCompat.START);
+            return true;
+        } else if (id >= 1000) {
+            // This is a dynamic wallet selection
+            long walletId = id - 1000;
+            PreferenceManager.setCurrentWallet(this, walletId);
+            getSupportLoaderManager().restartLoader(LOADER_WALLETS, null, this);
+            mShowingWallets = false;
+            updateMenuVisibility();
+            View headerView = mNavigationView.getHeaderView(0);
+            if (headerView != null) {
+                ImageView toggle = headerView.findViewById(R.id.header_toggle);
+                if (toggle != null) {
+                    toggle.animate().rotation(0).setDuration(200).start();
+                }
+            }
+            mDrawerLayout.closeDrawer(GravityCompat.START);
+            return true;
+        }
+        return false;
     }
 
     private void loadUi(Bundle savedInstanceState) {
         if (savedInstanceState != null) {
             mCurrentSelection = savedInstanceState.getLong(SAVED_SELECTION);
         } else {
-            // TODO maybe we can let the user to specify a preference for the first section to load
             mCurrentSelection = ID_SECTION_TRANSACTIONS;
         }
-        mDrawer.setSelection(mCurrentSelection, true);
+        updateNavigationViewSelection(mCurrentSelection);
+        handleSelection(mCurrentSelection);
         getSupportLoaderManager().restartLoader(LOADER_WALLETS, null, this);
+    }
+
+    private void updateNavigationViewSelection(long selection) {
+        int id = -1;
+        if (selection == ID_SECTION_TRANSACTIONS) id = R.id.id_section_transactions;
+        else if (selection == ID_SECTION_CATEGORIES) id = R.id.id_section_categories;
+        else if (selection == ID_SECTION_OVERVIEW) id = R.id.id_section_overview;
+        else if (selection == ID_SECTION_DEBTS) id = R.id.id_section_debts;
+        else if (selection == ID_SECTION_BUDGETS) id = R.id.id_section_budgets;
+        else if (selection == ID_SECTION_SAVINGS) id = R.id.id_section_savings;
+        else if (selection == ID_SECTION_EVENTS) id = R.id.id_section_events;
+        else if (selection == ID_SECTION_RECURRENCES) id = R.id.id_section_recurrences;
+        else if (selection == ID_SECTION_MODELS) id = R.id.id_section_models;
+        else if (selection == ID_SECTION_PLACES) id = R.id.id_section_places;
+        else if (selection == ID_SECTION_PEOPLE) id = R.id.id_section_people;
+        else if (selection == ID_SECTION_CALCULATOR) id = R.id.id_section_calculator;
+        else if (selection == ID_SECTION_CONVERTER) id = R.id.id_section_converter;
+        else if (selection == ID_SECTION_ATM) id = R.id.id_section_atm;
+        else if (selection == ID_SECTION_BANK) id = R.id.id_section_bank;
+        else if (selection == ID_SECTION_SETTING) id = R.id.id_section_setting;
+        else if (selection == ID_SECTION_SUPPORT_DEVELOPER) id = R.id.id_section_support_developer;
+        else if (selection == ID_SECTION_ABOUT) id = R.id.id_section_about;
+
+        if (id != -1) {
+            mNavigationView.setCheckedItem(id);
+        }
     }
 
     private void registerReceiver() {
@@ -229,8 +296,8 @@ public class MainActivity extends BaseActivity implements DrawerController, Acco
      */
     @Override
     public void onBackPressed() {
-        if (mDrawer != null && mDrawer.isDrawerOpen()) {
-            mDrawer.closeDrawer();
+        if (mDrawerLayout != null && mDrawerLayout.isDrawerOpen(GravityCompat.START)) {
+            mDrawerLayout.closeDrawer(GravityCompat.START);
         } else if (mCurrentFragment instanceof NavigableFragment) {
             if (!((NavigableFragment) mCurrentFragment).navigateBack()) {
                 super.onBackPressed();
@@ -246,14 +313,7 @@ public class MainActivity extends BaseActivity implements DrawerController, Acco
         LocalBroadcastManager.getInstance(this).unregisterReceiver(mBroadcastReceiver);
     }
 
-    /**
-     * Set toolbar for this activity.
-     * @param toolbar to set as main toolbar.
-     */
-    @Override
-    public void setToolbar(Toolbar toolbar) {
-        mDrawer.setToolbar(this, toolbar, true);
-    }
+
 
     /**
      * Set the lock mode for the activity drawer.
@@ -261,46 +321,13 @@ public class MainActivity extends BaseActivity implements DrawerController, Acco
      */
     @Override
     public void setDrawerLockMode(int lockMode) {
-        mDrawer.getDrawerLayout().setDrawerLockMode(lockMode);
+        mDrawerLayout.setDrawerLockMode(lockMode);
     }
 
-    /**
-     * This method is called by the navigation drawer whenever a profile is clicked.
-     * @param view of the clicked profile.
-     * @param profile clicked.
-     * @param current true if is the current profile.
-     * @return always false.
-     */
-    @Override
-    public boolean onProfileChanged(View view, IProfile profile, boolean current) {
-        long id = profile.getIdentifier();
-        if (profile instanceof ProfileDrawerItem) {
-            PreferenceManager.setCurrentWallet(this, id);
-        } else if (profile instanceof ProfileSettingDrawerItem) {
-            if (id == ID_ACTION_NEW_WALLET) {
-                Intent intent = new Intent(MainActivity.this, NewEditWalletActivity.class);
-                startActivity(intent);
-            } else if (id == ID_ACTION_MANAGE_WALLET) {
-                Intent intent = new Intent(MainActivity.this, WalletListActivity.class);
-                startActivity(intent);
-            }
-        }
-        return false;
-    }
-
-    /**
-     * Callback when a drawer item is clicked.
-     * @param view of the drawer item.
-     * @param position of the drawer item.
-     * @param drawerItem clicked.
-     * @return true if the event was consumed.
-     */
-    @Override
-    public boolean onItemClick(View view, int position, IDrawerItem drawerItem) {
-        if (drawerItem instanceof PrimaryDrawerItem) {
-            int identifier = (int) drawerItem.getIdentifier();
-            switch (identifier) {
-                case ID_SECTION_CALCULATOR:
+    private void handleSelection(long selection) {
+        mCurrentSelection = selection;
+        switch ((int) selection) {
+            case ID_SECTION_CALCULATOR:
                     startActivity(new Intent(this, CalculatorActivity.class));
                     break;
                 case ID_SECTION_CONVERTER:
@@ -318,15 +345,13 @@ public class MainActivity extends BaseActivity implements DrawerController, Acco
                 case ID_SECTION_ABOUT:
                     startActivity(new Intent(this, AboutActivity.class));
                     break;
+                case ID_SECTION_SETTING:
+                    loadSection(ID_SECTION_SETTING);
+                    break;
                 default:
-                    mCurrentSelection = identifier;
-                    loadSection(identifier);
-                    return false;
+                    loadSection((int) selection);
+                    break;
             }
-        }
-        mDrawer.closeDrawer();
-        mDrawer.setSelection(mCurrentSelection, false);
-        return true;
     }
 
     private void showAtmSearchDialog() {
@@ -465,91 +490,81 @@ public class MainActivity extends BaseActivity implements DrawerController, Acco
     @Override
     public void onLoadFinished(@NonNull Loader<Cursor> loader, Cursor cursor) {
         mCursor = cursor;
-        mAccountHeader.clear();
-        ITheme theme = ThemeEngine.getTheme();
-        int iconColor = theme.isDark() ? Color.parseColor("#8AFFFFFF") : Color.parseColor("#8A000000");
-        int selectedIconColor = theme.getColorPrimary();
-        int textColor = theme.isDark() ? Color.parseColor("#DEFFFFFF") : Color.parseColor("#DE000000");
-        int selectedTextColor = theme.getColorPrimary();
-        int selectedColor = theme.isDark() ? Color.parseColor("#202020") : Color.parseColor("#E8E8E8");
-        if (mCursor != null) {
-            int indexWalletId = mCursor.getColumnIndex(Contract.Wallet.ID);
-            int indexWalletName = mCursor.getColumnIndex(Contract.Wallet.NAME);
-            int indexWalletIcon = mCursor.getColumnIndex(Contract.Wallet.ICON);
-            int indexCurrency = mCursor.getColumnIndex(Contract.Wallet.CURRENCY);
-            int indexWalletInitial = mCursor.getColumnIndex(Contract.Wallet.START_MONEY);
-            int indexWalletTotal = mCursor.getColumnIndex(Contract.Wallet.TOTAL_MONEY);
-            int indexWalletArchived = mCursor.getColumnIndex(Contract.Wallet.ARCHIVED);
-            for (int i = 0, c = 0; i < mCursor.getCount(); i++) {
-                mCursor.moveToPosition(i);
-                if (cursor.getInt(indexWalletArchived) == 0) {
-                    String currency = cursor.getString(indexCurrency);
-                    long money = cursor.getLong(indexWalletInitial) + cursor.getLong(indexWalletTotal);
-                    mAccountHeader.addProfile(new WalletAccount()
-                                    .withIdentifier(cursor.getLong(indexWalletId))
-                                    .withName(cursor.getString(indexWalletName))
-                                    .withIcon(this, IconLoader.parse(cursor.getString(indexWalletIcon)))
-                                    .withMoney(currency, money)
-                                    .withNameShown(true)
-                                    .withTextColor(textColor)
-                                    .withSelectedTextColor(selectedTextColor)
-                                    .withSelectedColor(selectedColor)
-                            , c);
-                    c += 1;
-                }
-            }
-        }
-        if (mAccountHeader.getProfiles().size() > 0) {
-            mAccountHeader.setSelectionFirstLine(null);
-            mAccountHeader.setSelectionSecondLine(null);
-            ProfileDrawerItem totalAccount = createTotalWalletAccount(mCursor);
-            if (totalAccount != null) {
-                totalAccount.withTextColor(textColor);
-                totalAccount.withSelectedTextColor(selectedTextColor);
-                totalAccount.withSelectedColor(selectedColor);
-                mAccountHeader.addProfiles(totalAccount);
-            }
+        if (mCursor != null && mCursor.getCount() > 0) {
             long currentWalletId = PreferenceManager.getCurrentWallet();
             if (currentWalletId == PreferenceManager.NO_CURRENT_WALLET) {
-                // if no wallet is set as current wallet, let the drawer to select the first
-                // wallet found and then fire the onProfileChanged callback that will automatically
-                // register the id inside the PreferenceManager and notify the changed to all the
-                // observer registered at that uri.
-                IProfile profile = mAccountHeader.getProfiles().get(0);
-                mAccountHeader.setActiveProfile(profile, true);
-            } else {
-                mAccountHeader.setActiveProfile(currentWalletId);
+                mCursor.moveToFirst();
+                PreferenceManager.setCurrentWallet(this, mCursor.getLong(mCursor.getColumnIndex(Contract.Wallet.ID)));
             }
-        } else {
-            mAccountHeader.setSelectionFirstLine(getString(R.string.msg_no_wallet_found));
-            mAccountHeader.setSelectionSecondLine(getString(R.string.msg_add_one_wallet));
+            updateWalletMenu(mCursor);
         }
-        mAccountHeader.addProfiles(
-                new ProfileSettingDrawerItem()
-                        .withIdentifier(ID_ACTION_NEW_WALLET)
-                        .withIcon(R.drawable.ic_add_24dp)
-                        .withName(getString(R.string.action_new_wallet))
-                        .withIconTinted(true)
-                        .withIconColor(iconColor)
-                        .withTextColor(textColor)
-                        .withSelectedColor(selectedColor),
-                new ProfileSettingDrawerItem()
-                        .withIdentifier(ID_ACTION_MANAGE_WALLET)
-                        .withIcon(R.drawable.ic_settings_24dp)
-                        .withName(getString(R.string.action_manage_wallets))
-                        .withIconTinted(true)
-                        .withIconColor(iconColor)
-                        .withTextColor(textColor)
-                        .withSelectedColor(selectedColor)
-        );
     }
+
+    private void updateWalletMenu(Cursor cursor) {
+        Menu menu = mNavigationView.getMenu();
+
+        // Cleanup previous dynamic items
+        menu.removeGroup(R.id.id_section_wallets);
+
+        // Add "Total" wallet
+        WalletAccount totalWallet = createTotalWalletAccount(cursor);
+        if (totalWallet != null) {
+            MenuItem item = menu.add(R.id.id_section_wallets, 1000 + (int)totalWallet.getIdentifier(), 1, totalWallet.getName());
+            item.setIcon(totalWallet.getIconRes());
+            item.setCheckable(true);
+            item.setChecked(PreferenceManager.getCurrentWallet() == totalWallet.getIdentifier());
+        }
+
+        // Add individual wallets
+        int indexName = cursor.getColumnIndex(Contract.Wallet.NAME);
+        int indexId = cursor.getColumnIndex(Contract.Wallet.ID);
+        int indexTotal = cursor.getColumnIndex(Contract.Wallet.TOTAL_MONEY);
+        int indexInitial = cursor.getColumnIndex(Contract.Wallet.START_MONEY);
+        int indexCurrency = cursor.getColumnIndex(Contract.Wallet.CURRENCY);
+
+        for (int i = 0; i < cursor.getCount(); i++) {
+            cursor.moveToPosition(i);
+            long id = cursor.getLong(indexId);
+            String name = cursor.getString(indexName);
+            long amount = cursor.getLong(indexTotal) + cursor.getLong(indexInitial);
+            String currency = cursor.getString(indexCurrency);
+
+            String formattedAmount = MoneyFormatter.getInstance().getNotTintedString(CurrencyManager.getCurrency(currency), amount);
+            String title = name + " (" + formattedAmount + ")";
+            MenuItem item = menu.add(R.id.id_section_wallets, 1000 + (int)id, i + 2, title);
+            item.setIcon(R.drawable.ic_account_balance_24dp);
+            item.setCheckable(true);
+            
+            if (PreferenceManager.getCurrentWallet() == id) {
+                item.setChecked(true);
+                updateHeaderSubtitle(title);
+            }
+        }
+
+        if (totalWallet != null && PreferenceManager.getCurrentWallet() == totalWallet.getIdentifier()) {
+            updateHeaderSubtitle(totalWallet.getName());
+        }
+
+        updateMenuVisibility();
+    }
+
+    private void updateHeaderSubtitle(String subtitleText) {
+        View headerView = mNavigationView.getHeaderView(0);
+        if (headerView != null) {
+            TextView subtitle = headerView.findViewById(R.id.header_subtitle);
+            if (subtitle != null) {
+                subtitle.setText(subtitleText);
+            }
+        }
+    }
+
 
     /**
      * Create a total wallet profile from returned cursor.
      * @param cursor not null that contains all available wallets.
      * @return the total wallet profile if it can be created, null otherwise.
      */
-    private ProfileDrawerItem createTotalWalletAccount(@NonNull Cursor cursor) {
+    private WalletAccount createTotalWalletAccount(@NonNull Cursor cursor) {
         Money money = new Money();
         int indexCurrency = mCursor.getColumnIndex(Contract.Wallet.CURRENCY);
         int indexInTotal = mCursor.getColumnIndex(Contract.Wallet.COUNT_IN_TOTAL);
@@ -566,18 +581,16 @@ public class MainActivity extends BaseActivity implements DrawerController, Acco
         if (money.getNumberOfCurrencies() > 0) {
             String name = getString(R.string.total_wallet_name);
             return new WalletAccount()
-                    .withIdentifier(PreferenceManager.TOTAL_WALLET_ID)
+                    .withIdentifier(0)
                     .withName(name)
-                    .withIcon(this, new ColorIcon("#000000", name.substring(0, 1)))
                     .withMoney(money)
-                    .withNameShown(true);
+                    .withIcon(R.drawable.ic_account_balance_24dp);
         }
         return null;
     }
 
     @Override
     public void onLoaderReset(@NonNull Loader<Cursor> loader) {
-        mAccountHeader.clear();
         if (mCursor != null) {
             if (!mCursor.isClosed()) {
                 mCursor.close();
@@ -589,65 +602,9 @@ public class MainActivity extends BaseActivity implements DrawerController, Acco
     @Override
     protected void onThemeSetup(ITheme theme) {
         super.onThemeSetup(theme);
-        applyNavigationDrawerTheme(theme);
+        // Handled by Material 3 theme in XML
     }
 
-    private void applyNavigationDrawerTheme(ITheme theme) {
-        applyNavigationDrawerHeaderTheme(theme);
-        applyNavigationDrawerBodyTheme(theme);
-    }
-
-    private void applyNavigationDrawerHeaderTheme(ITheme theme) {
-        int backgroundColor = theme.getColorPrimary();
-        int textColor = theme.getBestTextColor(backgroundColor);
-        mAccountHeader.setBackground(new ColorDrawable(theme.getColorPrimary()));
-        View headerView = mAccountHeader.getView();
-        TextView nameTextView = headerView.findViewById(com.mikepenz.materialdrawer.R.id.material_drawer_account_header_name);
-        TextView emailTextView = headerView.findViewById(com.mikepenz.materialdrawer.R.id.material_drawer_account_header_email);
-        ImageView switcherImageView = headerView.findViewById(com.mikepenz.materialdrawer.R.id.material_drawer_account_header_text_switcher);
-        if (nameTextView != null) {nameTextView.setTextColor(textColor);}
-        if (emailTextView != null) {emailTextView.setTextColor(textColor);}
-        if (switcherImageView != null) {
-            switcherImageView.setColorFilter(textColor, PorterDuff.Mode.SRC_ATOP);
-        }
-    }
-
-    private void applyNavigationDrawerBodyTheme(ITheme theme) {
-        RecyclerView recyclerView = mDrawer.getRecyclerView();
-        ThemedRecyclerView.applyTheme(recyclerView, theme);
-        recyclerView.setBackgroundColor(theme.getDrawerBackgroundColor());
-        int iconColor = theme.getDrawerIconColor();
-        int selectedIconColor = theme.getDrawerSelectedIconColor();
-        int textColor = theme.getDrawerTextColor();
-        int selectedTextColor = theme.getDrawerSelectedTextColor();
-        int selectedColor = theme.getDrawerSelectedItemColor();
-        for (IDrawerItem item : mDrawer.getDrawerItems()) {
-            if (item instanceof PrimaryDrawerItem) {
-                ((PrimaryDrawerItem) item).withIconColor(iconColor);
-                ((PrimaryDrawerItem) item).withTextColor(textColor);
-                ((PrimaryDrawerItem) item).withSelectedIconColor(selectedIconColor);
-                ((PrimaryDrawerItem) item).withSelectedTextColor(selectedTextColor);
-                ((PrimaryDrawerItem) item).withSelectedColor(selectedColor);
-            }
-        }
-        for (IProfile profile : mAccountHeader.getProfiles()) {
-            if (profile instanceof ProfileDrawerItem) {
-                ((ProfileDrawerItem) profile).withTextColor(textColor);
-                ((ProfileDrawerItem) profile).withSelectedTextColor(selectedTextColor);
-                ((ProfileDrawerItem) profile).withSelectedColor(selectedColor);
-            } else if (profile instanceof ProfileSettingDrawerItem) {
-                ((ProfileSettingDrawerItem) profile).withIconColor(iconColor);
-                ((ProfileSettingDrawerItem) profile).withTextColor(textColor);
-                ((ProfileSettingDrawerItem) profile).withSelectedColor(selectedColor);
-            }
-        }
-        recyclerView.getAdapter().notifyDataSetChanged();
-    }
-
-    @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
-    protected void onThemeStatusBar(ITheme theme) {
-        mDrawer.getDrawerLayout().setStatusBarBackgroundColor(theme.getColorPrimaryDark());
-    }
 
     private BroadcastReceiver mBroadcastReceiver = new BroadcastReceiver() {
 

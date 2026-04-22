@@ -39,22 +39,30 @@ This project is completely free, I decided to completely remove the in-app purch
 - LTC: LZW1AUMWN4BdUvSu8fujEYVLgqWH2HsLZs
 
 ## Build
-You can compile the application very simply: just clone this repository locally to your computer and Android Studio will take care of the rest.
-You have four different options to build it with two choices.
-The first choice is which version you want to build:
+This updated version targets Android 14 (API 34) and has been stripped of proprietary or missing Google integrations for an entirely FLOSS (Free/Libre Open Source) build.
 
-- proprietary: this build flavor is designed to integrate Google Drive and Dropbox for a better user experience. It contains proprietary libraries (not open source) and requires the inclusion of valid api-keys to use these services. These keys must be registered in the file called gradle.properties in the root folder of the project before compiling.
-- floss: this build flavor is designed to contain only open source code and for this reason the integration with Google Drive and Dropbox has been removed.
+1. Ensure the Android SDK is configured correctly in `local.properties` (e.g. `sdk.dir=/home/user/Android/sdk`).
+2. Make sure you are using a modern JDK such as **Java 17** or **Java 21**. 
+3. **(Optional) Generate a Release Keystore**:
+   To build a production APK, you need a signing keystore. You can generate a temporary one with:
+   ```bash
+   keytool -genkey -v -keystore app/release.keystore -alias moneywallet -keyalg RSA -keysize 2048 -validity 10000 -storepass moneywallet -keypass moneywallet -dname "CN=MoneyWallet, OU=OSS, O=OSS, L=Unknown, S=Unknown, C=Unknown"
+   ```
+   *Note: The current `app/build.gradle` is configured to look for `app/release.keystore` with the password `moneywallet` by default.*
 
-The second choice is which map provider you want to use and you can choose between:
+4. **Run the Gradle build**:
 
-- gmap: this build flavor uses Google Map as map provider and requires you to provide a valid API-key. This key must be registered in the file called gradle.properties in the root folder of the project before compiling.
-- osm: this build flavor uses OpenStreetMap as map provider.
+   **For Debug (Development):**
+   ```bash
+   JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 ./gradlew assembleDebug
+   ```
 
-To decide what kind of build to compile, use the appropriate menu of gradle to choose the desired combination of build flavors.
-If you want to build only open source code (e.g. for the F-Droid market) you should use 'floss' and 'osm'.
+   **For Release (Production - Optimized):**
+   ```bash
+   JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 ./gradlew assembleRelease
+   ```
 
-The current release in Google Play Store uses 'proprietary' and 'osm' with some changes to integrate also the Crashlytics framework and the In-App billing library.
+The resulting APKs will be located in `app/build/outputs/apk/debug/` or `app/build/outputs/apk/release/`.
 
 ## FAQ
 1. why does the precompiled binary contain a huge icon pack while there are only a few icons in the source code?

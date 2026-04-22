@@ -24,9 +24,10 @@ import com.oriondev.moneywallet.storage.database.data.AbstractDataExporter;
 import com.oriondev.moneywallet.utils.CurrencyManager;
 import com.oriondev.moneywallet.utils.MoneyFormatter;
 
-import java.io.File;
-import java.io.FileOutputStream;
+import android.net.Uri;
+import androidx.documentfile.provider.DocumentFile;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -35,20 +36,29 @@ import java.util.List;
  */
 public class PDFDataExporter extends AbstractDataExporter {
 
-    private final File mOutputFile;
+    private final Uri mOutputUri;
     private final Document mDocument;
     private final MoneyFormatter mMoneyFormatter;
 
     private boolean mShouldLoadPeople = false;
     private int mChapterCount = 0;
 
-    public PDFDataExporter(Context context, File folder) throws IOException {
-        super(context, folder);
-        mOutputFile = new File(folder, getDefaultFileName(".pdf"));
+    public PDFDataExporter(Context context, Uri folderUri) throws IOException {
+        super(context, folderUri);
+        DocumentFile folder = DocumentFile.fromTreeUri(context, folderUri);
+        if (folder == null) {
+            throw new IOException("Failed to open folder URI: " + folderUri);
+        }
+        DocumentFile file = folder.createFile("application/pdf", getDefaultFileName(".pdf"));
+        if (file == null) {
+            throw new IOException("Failed to create file in folder: " + folder.getName());
+        }
+        mOutputUri = file.getUri();
         mMoneyFormatter = MoneyFormatter.getInstance();
         mDocument = new Document(PageSize.A4);
         try {
-            PdfWriter.getInstance(mDocument, new FileOutputStream(mOutputFile));
+            OutputStream outputStream = context.getContentResolver().openOutputStream(mOutputUri);
+            PdfWriter.getInstance(mDocument, outputStream);
         } catch (DocumentException e) {
             throw new IOException(e);
         }
@@ -243,8 +253,8 @@ public class PDFDataExporter extends AbstractDataExporter {
     }
 
     @Override
-    public File getOutputFile() {
-        return mOutputFile;
+    public Uri getOutputFile() {
+        return mOutputUri;
     }
 
     @Override

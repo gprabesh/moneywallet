@@ -28,6 +28,9 @@ import android.os.Bundle;
 import androidx.annotation.MenuRes;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.work.Data;
+import androidx.work.OneTimeWorkRequest;
+import androidx.work.WorkManager;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import androidx.fragment.app.Fragment;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
@@ -52,7 +55,7 @@ import com.oriondev.moneywallet.api.AbstractBackendServiceDelegate;
 import com.oriondev.moneywallet.api.BackendServiceFactory;
 import com.oriondev.moneywallet.broadcast.LocalAction;
 import com.oriondev.moneywallet.model.IFile;
-import com.oriondev.moneywallet.service.BackupHandlerIntentService;
+import com.oriondev.moneywallet.worker.BackupWorker;
 import com.oriondev.moneywallet.storage.database.backup.BackupManager;
 import com.oriondev.moneywallet.ui.adapter.recycler.BackupFileAdapter;
 import com.oriondev.moneywallet.ui.fragment.base.MultiPanelFragment;
@@ -123,6 +126,9 @@ public class BackupHandlerFragment extends Fragment implements BackupFileAdapter
         // bind to local broadcast manager to get notified of background operations
         Activity activity = getActivity();
         if (activity != null) {
+            if (mBackendService != null) {
+                mBackendService.register(this, activity);
+            }
             IntentFilter intentFilter = new IntentFilter();
             intentFilter.addAction(LocalAction.ACTION_BACKUP_SERVICE_STARTED);
             intentFilter.addAction(LocalAction.ACTION_BACKUP_SERVICE_FINISHED);
@@ -216,15 +222,24 @@ public class BackupHandlerFragment extends Fragment implements BackupFileAdapter
                                     Activity activity = getActivity();
                                     if (activity != null) {
                                         IFile folder = mFileStack.isEmpty() ? ROOT_FOLDER : mFileStack.get(mFileStack.size() - 1);
-                                        Intent intent = new Intent(activity, BackupHandlerIntentService.class);
-                                        intent.putExtra(BackupHandlerIntentService.BACKEND_ID, mBackendService.getId());
-                                        intent.putExtra(BackupHandlerIntentService.ACTION, BackupHandlerIntentService.ACTION_BACKUP);
-                                        intent.putExtra(BackupHandlerIntentService.PARENT_FOLDER, folder);
-                                        if (input.length() > 0) {
-                                            intent.putExtra(BackupHandlerIntentService.PASSWORD, input.toString());
+                                        Data.Builder inputData = new Data.Builder()
+                                                .putString(BackupWorker.BACKEND_ID, mBackendService.getId())
+                                                .putInt(BackupWorker.ACTION, BackupWorker.ACTION_BACKUP)
+                                                .putBoolean(BackupWorker.RUN_FOREGROUND, true)
+                                                .putString(BackupWorker.CALLER_ID, BACKUP_SERVICE_CALLER_ID);
+
+                                        if (folder != null) {
+                                            inputData.putString(BackupWorker.PARENT_FOLDER, folder.encodeToString());
                                         }
-                                        intent.putExtra(BackupHandlerIntentService.CALLER_ID, BACKUP_SERVICE_CALLER_ID);
-                                        activity.startService(intent);
+
+                                        if (input.length() > 0) {
+                                            inputData.putString(BackupWorker.PASSWORD, input.toString());
+                                        }
+
+                                        OneTimeWorkRequest request = new OneTimeWorkRequest.Builder(BackupWorker.class)
+                                                .setInputData(inputData.build())
+                                                .build();
+                                        WorkManager.getInstance(activity).enqueue(request);
                                     }
                                 }
 
@@ -267,7 +282,7 @@ public class BackupHandlerFragment extends Fragment implements BackupFileAdapter
     protected void hideCoverView() {
         if (mCoverLayout != null) {
             // setup menu item visibility
-            setMenuItemVisibility(R.id.action_disconnect, !BackendServiceFactory.SERVICE_ID_EXTERNAL_MEMORY.equals(mBackendService.getId()));
+            setMenuItemVisibility(R.id.action_disconnect, BackendServiceFactory.SERVICE_ID_SAF.equals(mBackendService.getId()));
             // setup layout visibility
             mCoverLayout.setVisibility(View.GONE);
             mPrimaryLayout.setVisibility(View.VISIBLE);
@@ -322,12 +337,19 @@ public class BackupHandlerFragment extends Fragment implements BackupFileAdapter
     protected void loadFolder(IFile folder) {
         Activity activity = getActivity();
         if (activity != null) {
-            Intent intent = new Intent(activity, BackupHandlerIntentService.class);
-            intent.putExtra(BackupHandlerIntentService.BACKEND_ID, mBackendService.getId());
-            intent.putExtra(BackupHandlerIntentService.ACTION, BackupHandlerIntentService.ACTION_LIST);
-            intent.putExtra(BackupHandlerIntentService.PARENT_FOLDER, folder);
-            intent.putExtra(BackupHandlerIntentService.CALLER_ID, BACKUP_SERVICE_CALLER_ID);
-            activity.startService(intent);
+            Data.Builder inputData = new Data.Builder()
+                    .putString(BackupWorker.BACKEND_ID, mBackendService.getId())
+                    .putInt(BackupWorker.ACTION, BackupWorker.ACTION_LIST)
+                    .putString(BackupWorker.CALLER_ID, BACKUP_SERVICE_CALLER_ID);
+
+            if (folder != null) {
+                                inputData.putString(BackupWorker.PARENT_FOLDER, folder.encodeToString());
+                            }
+
+            OneTimeWorkRequest request = new OneTimeWorkRequest.Builder(BackupWorker.class)
+                    .setInputData(inputData.build())
+                    .build();
+            WorkManager.getInstance(activity).enqueue(request);
         }
     }
 
@@ -360,12 +382,18 @@ public class BackupHandlerFragment extends Fragment implements BackupFileAdapter
 
                                 @Override
                                 public void onClick(@NonNull MaterialDialog dialog, @NonNull DialogAction which) {
-                                    Intent intent = new Intent(getActivity(), BackupHandlerIntentService.class);
-                                    intent.putExtra(BackupHandlerIntentService.BACKEND_ID, mBackendService.getId());
-                                    intent.putExtra(BackupHandlerIntentService.ACTION, BackupHandlerIntentService.ACTION_RESTORE);
-                                    intent.putExtra(BackupHandlerIntentService.BACKUP_FILE, file);
-                                    intent.putExtra(BackupHandlerIntentService.CALLER_ID, BACKUP_SERVICE_CALLER_ID);
-                                    getActivity().startService(intent);
+                                    Data inputData = new Data.Builder()
+                                            .putString(BackupWorker.BACKEND_ID, mBackendService.getId())
+                                            .putInt(BackupWorker.ACTION, BackupWorker.ACTION_RESTORE)
+                                            .putString(BackupWorker.BACKUP_FILE, file.encodeToString())
+                                            .putBoolean(BackupWorker.RUN_FOREGROUND, true)
+                                            .putString(BackupWorker.CALLER_ID, BACKUP_SERVICE_CALLER_ID)
+                                            .build();
+
+                                    OneTimeWorkRequest request = new OneTimeWorkRequest.Builder(BackupWorker.class)
+                                            .setInputData(inputData)
+                                            .build();
+                                    WorkManager.getInstance(getActivity()).enqueue(request);
                                 }
 
                             })
@@ -380,13 +408,19 @@ public class BackupHandlerFragment extends Fragment implements BackupFileAdapter
 
                                 @Override
                                 public void onInput(@NonNull MaterialDialog dialog, CharSequence input) {
-                                    Intent intent = new Intent(getActivity(), BackupHandlerIntentService.class);
-                                    intent.putExtra(BackupHandlerIntentService.BACKEND_ID, mBackendService.getId());
-                                    intent.putExtra(BackupHandlerIntentService.ACTION, BackupHandlerIntentService.ACTION_RESTORE);
-                                    intent.putExtra(BackupHandlerIntentService.BACKUP_FILE, file);
-                                    intent.putExtra(BackupHandlerIntentService.PASSWORD, input.toString());
-                                    intent.putExtra(BackupHandlerIntentService.CALLER_ID, BACKUP_SERVICE_CALLER_ID);
-                                    getActivity().startService(intent);
+                                    Data inputData = new Data.Builder()
+                                            .putString(BackupWorker.BACKEND_ID, mBackendService.getId())
+                                            .putInt(BackupWorker.ACTION, BackupWorker.ACTION_RESTORE)
+                                            .putString(BackupWorker.BACKUP_FILE, file.encodeToString())
+                                            .putString(BackupWorker.PASSWORD, input.toString())
+                                            .putBoolean(BackupWorker.RUN_FOREGROUND, true)
+                                            .putString(BackupWorker.CALLER_ID, BACKUP_SERVICE_CALLER_ID)
+                                            .build();
+
+                                    OneTimeWorkRequest request = new OneTimeWorkRequest.Builder(BackupWorker.class)
+                                            .setInputData(inputData)
+                                            .build();
+                                    WorkManager.getInstance(getActivity()).enqueue(request);
                                 }
 
                             })
@@ -401,12 +435,18 @@ public class BackupHandlerFragment extends Fragment implements BackupFileAdapter
 
                                 @Override
                                 public void onClick(@NonNull MaterialDialog dialog, @NonNull DialogAction which) {
-                                    Intent intent = new Intent(getActivity(), BackupHandlerIntentService.class);
-                                    intent.putExtra(BackupHandlerIntentService.BACKEND_ID, mBackendService.getId());
-                                    intent.putExtra(BackupHandlerIntentService.ACTION, BackupHandlerIntentService.ACTION_RESTORE);
-                                    intent.putExtra(BackupHandlerIntentService.BACKUP_FILE, file);
-                                    intent.putExtra(BackupHandlerIntentService.CALLER_ID, BACKUP_SERVICE_CALLER_ID);
-                                    getActivity().startService(intent);
+                                    Data inputData = new Data.Builder()
+                                            .putString(BackupWorker.BACKEND_ID, mBackendService.getId())
+                                            .putInt(BackupWorker.ACTION, BackupWorker.ACTION_RESTORE)
+                                            .putString(BackupWorker.BACKUP_FILE, file.encodeToString())
+                                            .putBoolean(BackupWorker.RUN_FOREGROUND, true)
+                                            .putString(BackupWorker.CALLER_ID, BACKUP_SERVICE_CALLER_ID)
+                                            .build();
+
+                                    OneTimeWorkRequest request = new OneTimeWorkRequest.Builder(BackupWorker.class)
+                                            .setInputData(inputData)
+                                            .build();
+                                    WorkManager.getInstance(getActivity()).enqueue(request);
                                 }
 
                             })
@@ -452,37 +492,33 @@ public class BackupHandlerFragment extends Fragment implements BackupFileAdapter
         @Override
         public void onReceive(Context context, Intent intent) {
             String action = intent.getAction();
-            String callerId = intent.getStringExtra(BackupHandlerIntentService.CALLER_ID);
+            String callerId = intent.getStringExtra(BackupWorker.CALLER_ID);
             if (!BACKUP_SERVICE_CALLER_ID.equals(callerId)) {
-                // the service has sent a message using the local broadcast manager but it
-                // is not directed to this fragment. we can simply ignore it. this is useful
-                // to avoid that the dialog appear when the auto backup is fired by the
-                // system and the user is browsing the backup section of the application.
                 return;
             }
             if (TextUtils.equals(action, LocalAction.ACTION_BACKUP_SERVICE_STARTED)) {
-                int operation = intent.getIntExtra(BackupHandlerIntentService.ACTION, 0);
-                if (operation == BackupHandlerIntentService.ACTION_LIST) {
+                int operation = intent.getIntExtra(BackupWorker.ACTION, 0);
+                if (operation == BackupWorker.ACTION_LIST) {
                     mAdvancedRecyclerView.setState(AdvancedRecyclerView.State.LOADING);
                 }
             } else if (TextUtils.equals(action, LocalAction.ACTION_BACKUP_SERVICE_FINISHED)) {
-                int operation = intent.getIntExtra(BackupHandlerIntentService.ACTION, 0);
-                if (operation == BackupHandlerIntentService.ACTION_LIST) {
-                    List<IFile> files = intent.getParcelableArrayListExtra(BackupHandlerIntentService.FOLDER_CONTENT);
+                int operation = intent.getIntExtra(BackupWorker.ACTION, 0);
+                if (operation == BackupWorker.ACTION_LIST) {
+                    List<IFile> files = intent.getParcelableArrayListExtra(BackupWorker.FOLDER_CONTENT);
                     mBackupAdapter.setFileList(files, mFileStack.size() > 0);
                     if (mBackupAdapter.getItemCount() == 0) {
                         mAdvancedRecyclerView.setState(AdvancedRecyclerView.State.EMPTY);
                     } else {
                         mAdvancedRecyclerView.setState(AdvancedRecyclerView.State.READY);
                     }
-                } else if (operation == BackupHandlerIntentService.ACTION_BACKUP) {
-                    IFile backup = intent.getParcelableExtra(BackupHandlerIntentService.BACKUP_FILE);
+                } else if (operation == BackupWorker.ACTION_BACKUP) {
+                    IFile backup = intent.getParcelableExtra(BackupWorker.BACKUP_FILE);
                     mBackupAdapter.addFileToList(backup);
                 }
             } else if (TextUtils.equals(action, LocalAction.ACTION_BACKUP_SERVICE_FAILED)) {
-                int operation = intent.getIntExtra(BackupHandlerIntentService.ACTION, 0);
-                if (operation == BackupHandlerIntentService.ACTION_LIST) {
-                    Exception exception = (Exception) intent.getSerializableExtra(BackupHandlerIntentService.EXCEPTION);
+                int operation = intent.getIntExtra(BackupWorker.ACTION, 0);
+                if (operation == BackupWorker.ACTION_LIST) {
+                    Exception exception = (Exception) intent.getSerializableExtra(BackupWorker.EXCEPTION);
                     if (exception instanceof BackendException && ((BackendException) exception).isRecoverable()) {
                         mBackupAdapter.setFileList(null, false);
                         mAdvancedRecyclerView.setErrorText(R.string.message_error_backend_recoverable);

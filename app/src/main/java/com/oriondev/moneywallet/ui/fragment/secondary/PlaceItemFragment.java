@@ -55,14 +55,13 @@ import com.oriondev.moneywallet.ui.activity.TransactionListActivity;
 import com.oriondev.moneywallet.ui.fragment.base.SecondaryPanelFragment;
 import com.oriondev.moneywallet.ui.view.theme.ThemedDialog;
 import com.oriondev.moneywallet.utils.IconLoader;
-import com.oriondev.moneywallet.view.MapViewWrapper;
 
 import java.util.Locale;
 
 /**
  * Created by andrea on 03/04/18.
  */
-public class PlaceItemFragment extends SecondaryPanelFragment implements LoaderManager.LoaderCallbacks<Cursor>, MapViewWrapper.OnMapLoadedCallback {
+public class PlaceItemFragment extends SecondaryPanelFragment implements LoaderManager.LoaderCallbacks<Cursor> {
 
     private static final int PLACE_LOADER_ID = 54363;
 
@@ -72,8 +71,6 @@ public class PlaceItemFragment extends SecondaryPanelFragment implements LoaderM
     private ImageView mAvatarImageView;
     private TextView mNameTextView;
     private TextView mAddressTextView;
-    private CardView mMapCardView;
-    private MapViewWrapper mMapView;
 
     private Coordinates mCoordinates;
 
@@ -90,75 +87,6 @@ public class PlaceItemFragment extends SecondaryPanelFragment implements LoaderM
         mProgressLayout = view.findViewById(R.id.secondary_panel_progress_wheel);
         mMainLayout = view.findViewById(R.id.secondary_panel_layout);
         mAddressTextView = view.findViewById(R.id.address_text_view);
-        mMapCardView = view.findViewById(R.id.map_card_view);
-        mMapView = new MapViewWrapper(view.findViewById(R.id.map_view));
-        view.findViewById(R.id.open_button).setOnClickListener(new View.OnClickListener() {
-
-            @Override
-            public void onClick(View v) {
-                if (mCoordinates != null) {
-                    try {
-                        Uri uri = Uri.parse(String.format(Locale.ENGLISH, "geo:0,0?q=%f,%f", mCoordinates.getLatitude(), mCoordinates.getLongitude()));
-                        Intent intent = new Intent(Intent.ACTION_VIEW, uri);
-                        startActivity(intent);
-                    } catch (ActivityNotFoundException e) {
-                        Activity activity = getActivity();
-                        if (activity != null) {
-                            ThemedDialog.buildMaterialDialog(activity)
-                                    .title(R.string.title_error)
-                                    .content(R.string.message_error_activity_not_found)
-                                    .positiveText(android.R.string.ok)
-                                    .show();
-                        }
-                    }
-                }
-            }
-
-        });
-        mMapView.onCreate(savedInstanceState);
-        mMapView.loadMapAsync(this);
-    }
-
-    @Override
-    public void onStart() {
-        super.onStart();
-        mMapView.onStart();
-    }
-
-    @Override
-    public void onResume() {
-        super.onResume();
-        mMapView.onResume();
-    }
-
-    @Override
-    public void onPause() {
-        super.onPause();
-        mMapView.onPause();
-    }
-
-    @Override
-    public void onStop() {
-        super.onStop();
-        mMapView.onStop();
-    }
-
-    @Override
-    public void onDestroy() {
-        super.onDestroy();
-        mMapView.onDestroy();
-    }
-
-    @Override
-    public void onSaveInstanceState(@NonNull Bundle outState) {
-        super.onSaveInstanceState(outState);
-        mMapView.onSaveInstanceState(outState);
-    }
-
-    @Override
-    public void onLowMemory() {
-        super.onLowMemory();
-        mMapView.onLowMemory();
     }
 
     @Override
@@ -273,7 +201,6 @@ public class PlaceItemFragment extends SecondaryPanelFragment implements LoaderM
             } else {
                 mCoordinates = null;
             }
-            onCoordinatesChanged();
         } else {
             showItemId(0L);
         }
@@ -283,23 +210,5 @@ public class PlaceItemFragment extends SecondaryPanelFragment implements LoaderM
     @Override
     public void onLoaderReset(@NonNull Loader<Cursor> loader) {
         // nothing to release
-    }
-
-    private void onCoordinatesChanged() {
-        if (mCoordinates != null && mMapView.isMapReady()) {
-            mMapView.addCoordinates(mCoordinates);
-            mMapCardView.setVisibility(View.VISIBLE);
-        } else {
-            if (mMapView.isMapReady()) {
-                mMapView.clear();
-            }
-            mMapCardView.setVisibility(View.GONE);
-        }
-    }
-
-    @Override
-    public void onMapReady() {
-        mMapView.disableMapInteractions();
-        onCoordinatesChanged();
     }
 }

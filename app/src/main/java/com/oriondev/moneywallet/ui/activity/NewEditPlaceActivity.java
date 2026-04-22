@@ -37,18 +37,16 @@ import com.oriondev.moneywallet.model.Coordinates;
 import com.oriondev.moneywallet.model.Icon;
 import com.oriondev.moneywallet.model.Place;
 import com.oriondev.moneywallet.picker.IconPicker;
-import com.oriondev.moneywallet.picker.MapPlacePicker;
 import com.oriondev.moneywallet.storage.database.Contract;
 import com.oriondev.moneywallet.storage.database.DataContentProvider;
 import com.oriondev.moneywallet.ui.view.text.MaterialEditText;
 import com.oriondev.moneywallet.ui.view.text.NonEmptyTextValidator;
 import com.oriondev.moneywallet.utils.IconLoader;
-import com.oriondev.moneywallet.view.MapViewWrapper;
 
 /**
  * Created by andrea on 06/03/18.
  */
-public class NewEditPlaceActivity extends NewEditItemActivity implements IconPicker.Controller, MapViewWrapper.OnMapLoadedCallback, MapPlacePicker.Controller {
+public class NewEditPlaceActivity extends NewEditItemActivity implements IconPicker.Controller {
 
     private static final String TAG_ICON_PICKER = "NewEditPlaceActivity::Tag::IconPicker";
     private static final String TAG_PLACE_PICKER = "NewEditPlaceActivity::Tag::PlacePicker";
@@ -56,11 +54,7 @@ public class NewEditPlaceActivity extends NewEditItemActivity implements IconPic
     private ImageView mIconView;
     private MaterialEditText mNameEditText;
     private MaterialEditText mAddressEditText;
-    private CardView mMapCardView;
-    private MapViewWrapper mMapView;
-
     private IconPicker mIconPicker;
-    private MapPlacePicker mPlacePicker;
 
     @Override
     protected void onCreateHeaderView(LayoutInflater inflater, ViewGroup parent, Bundle savedInstanceState) {
@@ -83,25 +77,6 @@ public class NewEditPlaceActivity extends NewEditItemActivity implements IconPic
     protected void onCreatePanelView(LayoutInflater inflater, ViewGroup parent, Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.layout_panel_new_edit_place, parent, true);
         mAddressEditText = view.findViewById(R.id.address_edit_text);
-        mMapCardView = view.findViewById(R.id.map_card_view);
-        mMapView = new MapViewWrapper(view.findViewById(R.id.map_view));
-        view.findViewById(R.id.place_picker_image_view).setOnClickListener(new View.OnClickListener() {
-
-            @Override
-            public void onClick(View v) {
-                mPlacePicker.showPicker();
-            }
-
-        });
-        view.findViewById(R.id.remove_button).setOnClickListener(new View.OnClickListener() {
-
-            @Override
-            public void onClick(View v) {
-                mPlacePicker.setCurrentPlace(null);
-            }
-
-        });
-        mMapView.onCreate(savedInstanceState);
     }
 
     @Override
@@ -144,52 +119,8 @@ public class NewEditPlaceActivity extends NewEditItemActivity implements IconPic
         // and update all the views according to the data
         FragmentManager fragmentManager = getSupportFragmentManager();
         mIconPicker = IconPicker.createPicker(fragmentManager, TAG_ICON_PICKER, icon);
-        mPlacePicker = MapPlacePicker.createPicker(fragmentManager, TAG_PLACE_PICKER, place);
         // configure pickers
         mIconPicker.listenOn(mNameEditText);
-        mMapView.loadMapAsync(this);
-    }
-
-    @Override
-    protected void onStart() {
-        super.onStart();
-        mMapView.onStart();
-    }
-
-    @Override
-    protected void onResume() {
-        super.onResume();
-        mMapView.onResume();
-    }
-
-    @Override
-    protected void onPause() {
-        super.onPause();
-        mMapView.onPause();
-    }
-
-    @Override
-    protected void onStop() {
-        super.onStop();
-        mMapView.onStop();
-    }
-
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        mMapView.onDestroy();
-    }
-
-    @Override
-    protected void onSaveInstanceState(Bundle outState) {
-        super.onSaveInstanceState(outState);
-        mMapView.onSaveInstanceState(outState);
-    }
-
-    @Override
-    public void onLowMemory() {
-        super.onLowMemory();
-        mMapView.onLowMemory();
     }
 
     @Override
@@ -212,14 +143,9 @@ public class NewEditPlaceActivity extends NewEditItemActivity implements IconPic
             contentValues.put(Contract.Place.NAME, mNameEditText.getTextAsString());
             contentValues.put(Contract.Place.ICON, mIconPicker.getCurrentIcon().toString());
             contentValues.put(Contract.Place.ADDRESS, mAddressEditText.getTextAsString());
-            if (mPlacePicker.isSelected() && mPlacePicker.getCurrentPlace().hasCoordinates()) {
-                Coordinates coordinates = mPlacePicker.getCurrentPlace().getCoordinates();
-                contentValues.put(Contract.Place.LATITUDE, coordinates.getLatitude());
-                contentValues.put(Contract.Place.LONGITUDE, coordinates.getLongitude());
-            } else {
-                contentValues.putNull(Contract.Place.LATITUDE);
-                contentValues.putNull(Contract.Place.LONGITUDE);
-            }
+            contentValues.putNull(Contract.Place.LATITUDE);
+            contentValues.putNull(Contract.Place.LONGITUDE);
+            
             switch (mode) {
                 case NEW_ITEM:
                     contentResolver.insert(DataContentProvider.CONTENT_PLACES, contentValues);
@@ -237,28 +163,5 @@ public class NewEditPlaceActivity extends NewEditItemActivity implements IconPic
     @Override
     public void onIconChanged(String tag, Icon icon) {
         IconLoader.loadInto(icon, mIconView);
-    }
-
-    @Override
-    public void onMapReady() {
-        mMapView.disableMapInteractions();
-        mPlacePicker.fireCallbackSafely();
-    }
-
-    @Override
-    public void onMapPlaceChanged(String tag, Place place) {
-        if (place != null && place.getName() != null) {
-            mNameEditText.setText(place.getName());
-            mAddressEditText.setText(place.getAddress());
-        }
-        if (place != null && place.hasCoordinates()) {
-            mMapView.addCoordinates(place.getCoordinates());
-            mMapCardView.setVisibility(View.VISIBLE);
-        } else {
-            if (mMapView.isMapReady()) {
-                mMapView.clear();
-            }
-            mMapCardView.setVisibility(View.GONE);
-        }
     }
 }

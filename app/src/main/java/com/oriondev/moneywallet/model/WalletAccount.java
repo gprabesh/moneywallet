@@ -24,88 +24,64 @@ import android.graphics.Bitmap;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import androidx.annotation.DrawableRes;
+import androidx.annotation.NonNull;
 
-import com.mikepenz.iconics.typeface.IIcon;
-import com.mikepenz.materialdrawer.holder.StringHolder;
-import com.mikepenz.materialdrawer.model.ProfileDrawerItem;
 import com.oriondev.moneywallet.utils.IconLoader;
 import com.oriondev.moneywallet.utils.MoneyFormatter;
 
 /**
  * Created by andrea on 23/01/18.
  */
-public class WalletAccount extends ProfileDrawerItem {
+public class WalletAccount {
 
     private MoneyFormatter mMoneyFormatter = MoneyFormatter.getInstance();
 
+    private long mIdentifier;
+    private String mName;
     private long mId;
     private Money mMoney;
+    private Drawable mIconDrawable;
+    private int mIconRes = -1;
 
-    @Override
     public WalletAccount withIdentifier(long identifier) {
-        super.withIdentifier(identifier);
+        mIdentifier = identifier;
         return this;
     }
 
-    @Override
+    public long getIdentifier() {
+        return mIdentifier;
+    }
+
     public WalletAccount withName(String name) {
-        super.withName(name);
+        mName = name;
         return this;
     }
 
-    @Override
-    public WalletAccount withEmail(String email) {
-        throw new IllegalStateException("Email field is not supported in WalletAccount.");
+    public String getName() {
+        return mName;
     }
 
-    @Override
-    public StringHolder getEmail() {
-        return new StringHolder(mMoneyFormatter.getNotTintedString(mMoney));
+    public String getEmail() {
+        return mMoneyFormatter.getNotTintedString(mMoney);
     }
 
     public WalletAccount withIcon(Context context, Icon icon) {
         Icon safeIcon = icon != null ? icon : IconLoader.UNKNOWN;
         if (safeIcon instanceof VectorIcon) {
-            super.withIcon(((VectorIcon) safeIcon).getResource(context));
+            this.mIconRes = ((VectorIcon) safeIcon).getResource(context);
         } else if (safeIcon instanceof ColorIcon) {
-            super.withIcon(((ColorIcon) safeIcon).getDrawable());
+            this.mIconDrawable = ((ColorIcon) safeIcon).getDrawable();
         }
         return this;
     }
 
-    @Override
     public WalletAccount withIcon(Drawable icon) {
-        super.withIcon(icon);
+        this.mIconDrawable = icon;
         return this;
     }
 
-    @Override
     public WalletAccount withIcon(@DrawableRes int iconRes) {
-        super.withIcon(iconRes);
-        return this;
-    }
-
-    @Override
-    public WalletAccount withIcon(Bitmap iconBitmap) {
-        super.withIcon(iconBitmap);
-        return this;
-    }
-
-    @Override
-    public WalletAccount withIcon(IIcon icon) {
-        super.withIcon(icon);
-        return this;
-    }
-
-    @Override
-    public WalletAccount withIcon(String url) {
-        super.withIcon(url);
-        return this;
-    }
-
-    @Override
-    public WalletAccount withIcon(Uri uri) {
-        super.withIcon(uri);
+        this.mIconRes = iconRes;
         return this;
     }
 
@@ -126,5 +102,17 @@ public class WalletAccount extends ProfileDrawerItem {
     public WalletAccount withMoney(Money money) {
         mMoney = money;
         return this;
+    }
+
+    public Money getMoney() {
+        return mMoney;
+    }
+
+    public int getIconRes() {
+        return mIconRes;
+    }
+
+    public Drawable getIconDrawable() {
+        return mIconDrawable;
     }
 }

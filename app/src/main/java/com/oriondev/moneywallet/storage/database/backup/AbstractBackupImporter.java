@@ -57,6 +57,7 @@ public abstract class AbstractBackupImporter {
      * @throws ImportException if an error occur while importing the backup file.
      */
     public void importDatabase(@NonNull File temporaryFolder, @NonNull File databaseFolder) throws ImportException {
+        notifyImportStarted();
         File temporary = createBackupCopyOfCurrentDatabase(databaseFolder);
         try {
             importDatabase(temporaryFolder);

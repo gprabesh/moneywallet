@@ -33,7 +33,6 @@ import android.view.MenuItem;
 import com.oriondev.moneywallet.R;
 import com.oriondev.moneywallet.storage.database.Contract;
 import com.oriondev.moneywallet.storage.database.DataContentProvider;
-import com.oriondev.moneywallet.ui.activity.MapActivity;
 import com.oriondev.moneywallet.ui.activity.NewEditItemActivity;
 import com.oriondev.moneywallet.ui.activity.NewEditPlaceActivity;
 import com.oriondev.moneywallet.ui.adapter.recycler.AbstractCursorAdapter;
@@ -100,11 +99,6 @@ public class PlaceMultiPanelFragment extends MultiPanelCursorListItemFragment im
 
     @Override
     public boolean onMenuItemClick(MenuItem item) {
-        switch (item.getItemId()) {
-            case R.id.action_open_map:
-                startActivity(new Intent(getActivity(), MapActivity.class));
-                break;
-        }
         return false;
     }
 

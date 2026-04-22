@@ -26,11 +26,15 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 
+import androidx.work.Data;
+import androidx.work.OneTimeWorkRequest;
+import androidx.work.WorkManager;
+
 import com.oriondev.moneywallet.api.BackendServiceFactory;
 import com.oriondev.moneywallet.model.IFile;
-import com.oriondev.moneywallet.service.BackupHandlerIntentService;
 import com.oriondev.moneywallet.storage.preference.BackendManager;
 import com.oriondev.moneywallet.storage.preference.PreferenceManager;
+import com.oriondev.moneywallet.worker.BackupWorker;
 
 import java.util.Set;
 
@@ -83,7 +87,7 @@ public class AutoBackupBroadcastReceiver extends BroadcastReceiver {
 
     private static PendingIntent createPendingIntent(Context context) {
         Intent intent = new Intent(context, AutoBackupBroadcastReceiver.class);
-        return PendingIntent.getBroadcast(context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
+        return PendingIntent.getBroadcast(context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
     }
 
     @Override
@@ -104,30 +108,29 @@ public class AutoBackupBroadcastReceiver extends BroadcastReceiver {
                         boolean onlyOnWiFi = BackendManager.isAutoBackupOnWiFiOnly(backendId);
                         IFile folder = BackendServiceFactory.getFile(backendId, BackendManager.getAutoBackupFolder(backendId));
                         String password = BackendManager.getAutoBackupPassword(backendId);
-                        // build the intent to start the service
-                        Intent intent = new Intent(context, BackupHandlerIntentService.class);
-                        intent.putExtra(BackupHandlerIntentService.ACTION, BackupHandlerIntentService.ACTION_BACKUP);
-                        intent.putExtra(BackupHandlerIntentService.BACKEND_ID, backendId);
-                        intent.putExtra(BackupHandlerIntentService.AUTO_BACKUP, true);
-                        intent.putExtra(BackupHandlerIntentService.ONLY_ON_WIFI, onlyOnWiFi);
-                        intent.putExtra(BackupHandlerIntentService.PARENT_FOLDER, folder);
-                        intent.putExtra(BackupHandlerIntentService.PASSWORD, password);
-                        BackupHandlerIntentService.startInForeground(context, intent);
+                        // build the work request
+                        Data inputData = new Data.Builder()
+                                .putInt(BackupWorker.ACTION, BackupWorker.ACTION_BACKUP)
+                                .putString(BackupWorker.BACKEND_ID, backendId)
+                                .putBoolean(BackupWorker.AUTO_BACKUP, true)
+                                .putBoolean(BackupWorker.ONLY_ON_WIFI, onlyOnWiFi)
+                                .putString(BackupWorker.PARENT_FOLDER, folder.encodeToString())
+                                .putString(BackupWorker.PASSWORD, password)
+                                .build();
+
+                        OneTimeWorkRequest backupRequest = new OneTimeWorkRequest.Builder(BackupWorker.class)
+                                .setInputData(inputData)
+                                .build();
+
+                        WorkManager.getInstance(context).enqueue(backupRequest);
                     }
                     // register the next occurrence as the last time the auto backup
-                    // for this specific backend has been executed: if an error occur
-                    // and the backup process is interrupted, the error is shown in
-                    // a specific notification (no auto rescheduling because we don't
-                    // know if the error is a recoverable error or a critical one)
+                    // for this specific backend has been executed
                     BackendManager.setAutoBackupLastTime(backendId, nextOccurrence);
                 }
             }
         }
-        // reschedule the auto backup immediately (if one or more intent services are fired, they
-        // are executed in a serial way but the last time is already updated). in this way we can
-        // calculate the next occurrence without waiting that all the intent services are executed.
-        // if an exception occur inside one intent service and a backend should be disabled, it
-        // will handle it automatically without the need to wait here for a response.
+        // reschedule the auto backup immediately
         AutoBackupBroadcastReceiver.scheduleAutoBackupTask(context);
     }
 }

@@ -32,6 +32,8 @@ import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.SeekBar;
 import android.widget.TextView;
+import android.net.Uri;
+import androidx.documentfile.provider.DocumentFile;
 
 import com.afollestad.materialdialogs.DialogAction;
 import com.afollestad.materialdialogs.MaterialDialog;
@@ -40,7 +42,6 @@ import com.oriondev.moneywallet.api.BackendServiceFactory;
 import com.oriondev.moneywallet.broadcast.AutoBackupBroadcastReceiver;
 import com.oriondev.moneywallet.model.IFile;
 import com.oriondev.moneywallet.storage.preference.BackendManager;
-import com.oriondev.moneywallet.ui.activity.BackendExplorerActivity;
 import com.oriondev.moneywallet.ui.view.theme.ThemedDialog;
 
 /**
@@ -129,9 +130,7 @@ public class AutoBackupSettingDialog extends DialogFragment {
                 public void onClick(View v) {
                     Activity activity = getActivity();
                     if (activity != null) {
-                        Intent intent = new Intent(activity, BackendExplorerActivity.class);
-                        intent.putExtra(BackendExplorerActivity.BACKEND_ID, mBackendId);
-                        intent.putExtra(BackendExplorerActivity.MODE, BackendExplorerActivity.MODE_FOLDER_PICKER);
+                        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
                         startActivityForResult(intent, REQUEST_CODE_FOLDER_PICKER);
                     }
                 }
@@ -189,8 +188,12 @@ public class AutoBackupSettingDialog extends DialogFragment {
     @Override
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
         if (requestCode == REQUEST_CODE_FOLDER_PICKER) {
-            if (resultCode == Activity.RESULT_OK) {
-                mFolder = data.getParcelableExtra(BackendExplorerActivity.RESULT_FILE);
+            if (resultCode == Activity.RESULT_OK && data != null) {
+                Uri uri = data.getData();
+                if (uri != null) {
+                    getActivity().getContentResolver().takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+                    mFolder = BackendServiceFactory.getFile(mBackendId, uri.toString());
+                }
                 onFolderChanged();
             }
         } else {

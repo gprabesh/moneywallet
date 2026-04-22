@@ -2,6 +2,7 @@ package com.oriondev.moneywallet.storage.database.data;
 
 import android.content.Context;
 import android.database.Cursor;
+import android.net.Uri;
 import androidx.collection.LongSparseArray;
 
 import com.oriondev.moneywallet.model.Wallet;
@@ -24,10 +25,12 @@ public abstract class AbstractDataExporter {
     public static final String COLUMN_NOTE = "column_note";
 
     private final Context mContext;
+    private final Uri mFolderUri;
     private final LongSparseArray<String> mPeopleCache;
 
-    public AbstractDataExporter(Context context, File folder) throws IOException {
+    public AbstractDataExporter(Context context, Uri folderUri) throws IOException {
         mContext = context;
+        mFolderUri = folderUri;
         mPeopleCache = new LongSparseArray<>();
     }
 
@@ -58,11 +61,15 @@ public abstract class AbstractDataExporter {
         return mContext;
     }
 
+    protected Uri getFolderUri() {
+        return mFolderUri;
+    }
+
     public abstract void exportData(Cursor cursor, String[] columns, Wallet... wallets) throws IOException;
 
     public abstract void close() throws IOException;
 
-    public abstract File getOutputFile();
+    public abstract Uri getOutputFile();
 
     public abstract String getResultType();
 }

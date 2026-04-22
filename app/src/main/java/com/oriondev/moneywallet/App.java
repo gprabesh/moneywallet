@@ -22,6 +22,7 @@ package com.oriondev.moneywallet;
 import android.app.Application;
 import android.content.Context;
 
+import androidx.appcompat.app.AppCompatDelegate;
 import androidx.multidex.MultiDex;
 
 import com.oriondev.moneywallet.broadcast.AutoBackupBroadcastReceiver;
@@ -43,6 +44,7 @@ public class App extends Application {
     @Override
     public void onCreate() {
         super.onCreate();
+        AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES);
         PreferenceManager.initialize(this);
         BackendManager.initialize(this);
         ThemeEngine.initialize(this);

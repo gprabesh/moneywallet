@@ -49,45 +49,7 @@
             app:mtv_bottomLineEnabled="true"
             tools:text="Piazza Leonardo, Milan, Italy" />
 
-        <com.oriondev.moneywallet.ui.view.theme.ThemedCardView
-            android:id="@+id/map_card_view"
-            android:layout_gravity="center"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_margin="@dimen/material_component_card_margin"
-            android:foreground="?attr/selectableItemBackground" >
 
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical" >
-
-                <include layout="@layout/view_card_map" />
-
-                <LinearLayout
-                    android:id="@+id/button_bar_layout"
-                    android:layout_width="match_parent"
-                    android:layout_height="@dimen/material_component_lists_card_action_button_height"
-                    android:padding="@dimen/material_component_lists_card_action_button_padding"
-                    android:orientation="horizontal"
-                    android:gravity="end"
-                    style="?android:attr/buttonBarStyle" >
-
-                    <com.oriondev.moneywallet.ui.view.theme.ThemedCardButton
-                        android:id="@+id/open_button"
-                        android:layout_width="wrap_content"
-                        android:layout_height="match_parent"
-                        android:layout_marginLeft="@dimen/material_component_lists_card_action_button_padding"
-                        android:layout_marginStart="@dimen/material_component_lists_card_action_button_padding"
-                        android:text="@string/action_open"
-                        android:background="?attr/selectableItemBackground"
-                        style="?android:attr/buttonBarButtonStyle" />
-
-                </LinearLayout>
-
-            </LinearLayout>
-
-        </com.oriondev.moneywallet.ui.view.theme.ThemedCardView>
 
     </LinearLayout>
 

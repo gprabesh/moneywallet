@@ -13,27 +13,39 @@ import com.oriondev.moneywallet.storage.database.data.AbstractDataExporter;
 import com.oriondev.moneywallet.utils.CurrencyManager;
 import com.oriondev.moneywallet.utils.MoneyFormatter;
 
-import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.io.Writer;
 import java.util.ArrayList;
 import java.util.List;
+
+import androidx.documentfile.provider.DocumentFile;
+import android.net.Uri;
 
 /**
  * Created by andrea on 21/12/18.
  */
 public class CSVDataExporter extends AbstractDataExporter {
 
-    private final File mOutputFile;
+    private final Uri mOutputUri;
     private final CSVWriter mWriter;
     private final MoneyFormatter mMoneyFormatter;
 
     private boolean mShouldLoadPeople = false;
 
-    public CSVDataExporter(Context context, File folder) throws IOException {
-        super(context, folder);
-        mOutputFile = new File(folder, getDefaultFileName(".csv"));
-        mWriter = new CSVWriter(new FileWriter(mOutputFile));
+    public CSVDataExporter(Context context, Uri folderUri) throws IOException {
+        super(context, folderUri);
+        DocumentFile folder = DocumentFile.fromTreeUri(context, folderUri);
+        if (folder == null) {
+            throw new IOException("Failed to open folder URI: " + folderUri);
+        }
+        DocumentFile file = folder.createFile("text/csv", getDefaultFileName(".csv"));
+        if (file == null) {
+            throw new IOException("Failed to create file in folder: " + folder.getName());
+        }
+        mOutputUri = file.getUri();
+        Writer writer = new OutputStreamWriter(context.getContentResolver().openOutputStream(mOutputUri));
+        mWriter = new CSVWriter(writer);
         mMoneyFormatter = MoneyFormatter.getInstance();
         mMoneyFormatter.setCurrencyEnabled(false);
         mMoneyFormatter.setRoundDecimalsEnabled(false);
@@ -156,8 +168,8 @@ public class CSVDataExporter extends AbstractDataExporter {
     }
 
     @Override
-    public File getOutputFile() {
-        return mOutputFile;
+    public Uri getOutputFile() {
+        return mOutputUri;
     }
 
     @Override

@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:app="http://schemas.android.com/apk/res-auto">
+    <!-- Material 3 Dark Theme -->
+    <style name="Theme.MoneyWallet" parent="Theme.Material3.Dark.NoActionBar">
+        <!-- Main theme colors -->
+        <item name="colorPrimary">#80CBC4</item> <!-- Money Teal / Sage -->
+        <item name="colorOnPrimary">#003732</item>
+        <item name="colorPrimaryContainer">#005049</item>
+        <item name="colorOnPrimaryContainer">#9CF2E8</item>
+
+        <item name="colorSecondary">#B2CBC8</item>
+        <item name="colorOnSecondary">#1D3532</item>
+        <item name="colorSecondaryContainer">#334B49</item>
+        <item name="colorOnSecondaryContainer">#CEE7E4</item>
+
+        <item name="colorTertiary">#B2C8E1</item>
+        <item name="colorOnTertiary">#1B3145</item>
+        <item name="colorTertiaryContainer">#32485D</item>
+        <item name="colorOnTertiaryContainer">#D1E4FF</item>
+
+        <item name="android:colorBackground">#191C1C</item>
+        <item name="colorSurface">#191C1C</item>
+        <item name="colorOnSurface">#E0E3E2</item>
+        <item name="colorSurfaceVariant">#3F4948</item>
+        <item name="colorOnSurfaceVariant">#BFC8C7</item>
+
+        <item name="colorOutline">#899391</item>
+
+        <!-- Status bar and navigation bar -->
+        <item name="android:statusBarColor">?attr/colorSurface</item>
+        <item name="android:navigationBarColor">?attr/colorSurface</item>
+        <item name="android:windowLightStatusBar">false</item>
+        
+        <!-- Customize specific styles -->
+        <item name="preferenceTheme">@style/PreferenceThemeOverlay</item>
+    </style>
+</resources>

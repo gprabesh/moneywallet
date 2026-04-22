@@ -35,10 +35,6 @@
 # Bouncy Castle (optional dependency for itextpdf)
 -dontwarn org.bouncycastle.**
 
-# OSMDroid
--keep class org.osmdroid.** { *; }
--dontwarn org.osmdroid.**
-
 # Material Dialogs
 -dontwarn com.afollestad.materialdialogs.**
 

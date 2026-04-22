@@ -121,8 +121,6 @@ dependencies {
     implementation 'com.github.bumptech.glide:glide:4.8.0'
     annotationProcessor 'com.github.bumptech.glide:compiler:4.8.0'
     implementation 'androidx.work:work-runtime:2.9.0'
-    // osm map dependency
-    implementation 'org.osmdroid:osmdroid-android:6.1.1'
     // test dependencies (local tests)
     testImplementation 'junit:junit:4.12'
     testImplementation 'org.mockito:mockito-core:3.6.28'
